@@ -63,6 +63,7 @@ class QuizService:
 
         total_questions = len(quiz.questions)
         correct_count = 0
+        wrong_question_ids = []
         details = {}
 
         for q in quiz.questions:
@@ -70,6 +71,8 @@ class QuizService:
             is_correct = (user_ans == q.correct_answer)
             if is_correct:
                 correct_count += 1
+            else:
+                wrong_question_ids.append(q.id)
             
             details[str(q.id)] = {
                 "correct": q.correct_answer,
@@ -93,10 +96,12 @@ class QuizService:
             score=score_percentage,
             total_questions=total_questions,
             correct_answers=correct_count,
-            feedback=feedback
+            feedback=feedback,
+            wrong_question_ids=",".join(map(str, wrong_question_ids)) if wrong_question_ids else ""
         )
         db.add(db_res)
         db.commit()
+        db.refresh(db_res) # Refresh to get result ID to return later if needed
 
         # Update user competency level if score is high (G7 Requirement)
         if score_percentage >= 75.0 and quiz.topic:
@@ -117,5 +122,6 @@ class QuizService:
             total_questions=total_questions,
             correct_answers=correct_count,
             feedback=feedback,
-            correct_details=details
+            correct_details=details,
+            result_id=db_res.id
         )

@@ -428,3 +428,119 @@ graph TD
     }
   ]
   ```
+
+---
+
+## 7. Daily Roadmap Tracker
+
+### **Generate Daily Learning Roadmap**
+* **Endpoint:** `POST /users/{user_id}/roadmaps/generate`
+* **Description:** Requests ChatGroq to segment a targeted competency gap into a structured, day-by-day learning task roadmap.
+* **Request Body:**
+  ```json
+  {
+    "target_competency": "Python",
+    "number_of_days": 5
+  }
+  ```
+* **Response (201 Created):**
+  ```json
+  {
+    "id": 1,
+    "user_id": 1,
+    "title": "Python Mastery Roadmap",
+    "target_competency": "Python",
+    "progress_percentage": 0,
+    "created_at": "2026-08-30T13:28:00",
+    "tasks": [
+      {
+        "id": 1,
+        "day_number": 1,
+        "task_title": "Setup and Syntax Basics",
+        "task_description": "Install python v3.11, write a hello world script, and practice integer operations.",
+        "status": "Pending",
+        "completed_at": null
+      },
+      {
+        "id": 2,
+        "day_number": 2,
+        "task_title": "Control Flows",
+        "task_description": "Understand if-else statements and write while loops.",
+        "status": "Pending",
+        "completed_at": null
+      }
+    ]
+  }
+  ```
+
+---
+
+### **Get User Roadmaps**
+* **Endpoint:** `GET /users/{user_id}/roadmaps`
+* **Description:** Retrieves all generated roadmaps for the user.
+* **Response (200 OK):**
+  ```json
+  [
+    {
+      "id": 1,
+      "user_id": 1,
+      "title": "Python Mastery Roadmap",
+      "target_competency": "Python",
+      "progress_percentage": 0,
+      "created_at": "2026-08-30T13:28:00",
+      "tasks": [...]
+    }
+  ]
+  ```
+
+---
+
+### **Toggle Daily Task Status**
+* **Endpoint:** `PUT /roadmaps/tasks/{task_id}`
+* **Description:** Toggles the completion status of a daily task. The backend automatically recalculates the parent roadmap's overall `progress_percentage`.
+* **Request Body:**
+  ```json
+  {
+    "status": "Completed" 
+  }
+  ```
+  *(Options: "Pending" or "Completed")*
+* **Response (200 OK):**
+  ```json
+  {
+    "id": 1,
+    "day_number": 1,
+    "task_title": "Setup and Syntax Basics",
+    "task_description": "Install python v3.11, write a hello world script, and practice integer operations.",
+    "status": "Completed",
+    "completed_at": "2026-08-30T13:29:15"
+  }
+
+---
+
+### **Generate Remediation Roadmap from Quiz Result**
+* **Endpoint:** `POST /quizzes/results/{result_id}/roadmap`
+* **Description:** Analyzes a failed quiz attempt (`score < 75%`), extracts the questions the user got incorrect, and prompts ChatGroq to build a highly targetedday-by-day study roadmap focusing only on those failed topics.
+* **Query Parameters (Optional):**
+  * `number_of_days`: Length of remedial course (default is `3`)
+* **Response (201 Created):**
+  ```json
+  {
+    "id": 2,
+    "user_id": 1,
+    "title": "Personalized Remediation Roadmap",
+    "target_competency": "Remediation for Quiz",
+    "progress_percentage": 0,
+    "created_at": "2026-08-30T13:34:00",
+    "tasks": [
+      {
+        "id": 10,
+        "day_number": 1,
+        "task_title": "Review Simple Random Sampling Gaps",
+        "task_description": "Study why simple random sampling gives every element an equal chance, correcting your answer on biased methods.",
+        "status": "Pending",
+        "completed_at": null
+      }
+    ]
+  }
+  ```

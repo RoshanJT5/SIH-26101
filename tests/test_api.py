@@ -143,3 +143,91 @@ def test_recommendations(client):
     assert len(recs) > 0
     # The highest recommended course should ideally be the FastAPI one or AI Foundations one (addressing Python gap)
     assert "Python" in recs[0]["skills_addressed"] or "Python" in recs[1]["skills_addressed"]
+
+def test_roadmap_lifecycle(client):
+    # 1. Create a user
+    user_payload = {
+        "name": "Roadmap Learner",
+        "email": "roadmap@example.com",
+        "job_role": "Analyst"
+    }
+    user_res = client.post("/api/v1/users", json=user_payload)
+    user_id = user_res.json()["id"]
+
+    # 2. Generate a 3-day roadmap for Python
+    roadmap_payload = {
+        "target_competency": "Python",
+        "number_of_days": 3
+    }
+    roadmap_res = client.post(f"/api/v1/users/{user_id}/roadmaps/generate", json=roadmap_payload)
+    assert roadmap_res.status_code == 201
+    roadmap_data = roadmap_res.json()
+    assert roadmap_data["title"] == "Python Mastery Roadmap"
+    assert roadmap_data["progress_percentage"] == 0
+    assert len(roadmap_data["tasks"]) == 3
+    
+    # 3. Complete the first day's task
+    first_task_id = roadmap_data["tasks"][0]["id"]
+    task_update_res = client.put(f"/api/v1/roadmaps/tasks/{first_task_id}", json={"status": "Completed"})
+    assert task_update_res.status_code == 200
+    task_data = task_update_res.json()
+    assert task_data["status"] == "Completed"
+    
+    # 4. Fetch the roadmap again and verify progress is updated (33%)
+    get_roadmaps_res = client.get(f"/api/v1/users/{user_id}/roadmaps")
+    assert get_roadmaps_res.status_code == 200
+    all_roadmaps = get_roadmaps_res.json()
+    assert len(all_roadmaps) == 1
+    assert all_roadmaps[0]["progress_percentage"] == 33
+
+def test_remediation_roadmap(client, db):
+    # 1. Create User
+    user_payload = {
+        "name": "Failing Student",
+        "email": "fail@example.com",
+        "job_role": "Survey Assistant"
+    }
+    user_res = client.post("/api/v1/users", json=user_payload)
+    user_id = user_res.json()["id"]
+
+    # 2. Add Quiz & Question to DB
+    from app.models.quiz import Quiz, Question
+    import json
+    
+    quiz = Quiz(topic="Sampling", difficulty="easy", number_of_questions=1)
+    db.add(quiz)
+    db.commit()
+    db.refresh(quiz)
+
+    q = Question(
+        quiz_id=quiz.id,
+        question_text="What is simple random sampling?",
+        options=json.dumps(["A random method", "A biased method", "No answer", "Option D"]),
+        correct_answer="A random method",
+        explanation="Simple random sampling gives every element an equal chance.",
+        topic="Sampling"
+    )
+    db.add(q)
+    db.commit()
+
+    # 3. Submit incorrect answer to get failing result
+    sub_payload = {
+        "answers": {
+            str(q.id): "A biased method"
+        }
+    }
+    sub_res = client.post(f"/api/v1/quizzes/{quiz.id}/submit?user_id={user_id}", json=sub_payload)
+    assert sub_res.status_code == 200
+    res_data = sub_res.json()
+    assert res_data["score"] == 0.0
+    result_id = res_data["result_id"]
+
+    # 4. Generate Remedial Roadmap
+    roadmap_res = client.post(f"/api/v1/quizzes/results/{result_id}/roadmap?number_of_days=2")
+    assert roadmap_res.status_code == 201
+    roadmap_data = roadmap_res.json()
+    assert roadmap_data["title"] == "Personalized Remediation Roadmap"
+    assert roadmap_data["target_competency"] == "Remediation for Quiz"
+    assert len(roadmap_data["tasks"]) == 2
+
+

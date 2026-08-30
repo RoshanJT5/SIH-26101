@@ -13,7 +13,7 @@ from app.models.quiz import Quiz, Question, QuizResult
 from app.models.progress import LearningHistory
 
 # Import routes
-from app.api.routes import users, competencies, skill_gaps, courses, documents, rag, quizzes, progress
+from app.api.routes import users, competencies, skill_gaps, courses, documents, rag, quizzes, progress, roadmaps
 
 # Initialize tables
 Base.metadata.create_all(bind=engine)
@@ -51,6 +51,7 @@ app.include_router(documents.router, prefix=api_prefix)
 app.include_router(rag.router, prefix=api_prefix)
 app.include_router(quizzes.router, prefix=api_prefix)
 app.include_router(progress.router, prefix=api_prefix)
+app.include_router(roadmaps.router, prefix=api_prefix)
 
 @app.get("/")
 def read_root():

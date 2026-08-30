@@ -42,6 +42,7 @@ class QuizResult(Base):
     total_questions = Column(Integer, nullable=False)
     correct_answers = Column(Integer, nullable=False)
     feedback = Column(Text, nullable=True)
+    wrong_question_ids = Column(String, nullable=True) # Comma-separated question IDs
 
     # Relationships
     user = relationship("User", back_populates="quiz_results")
