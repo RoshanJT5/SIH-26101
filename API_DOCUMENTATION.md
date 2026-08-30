@@ -17,12 +17,15 @@ To implement the core experience, follow this step-by-step API integration seque
 graph TD
     A[1. Create Profile / POST /users] --> B[2. Assign Initial Competencies / POST /users/id/competencies]
     B --> C[3. Check Gaps / GET /users/id/skill-gaps]
-    C --> D[4. Fetch Path / GET /users/id/recommendations]
+    C --> D[4. Generate Learning Roadmap / POST /users/id/roadmaps/generate]
     D --> E[5. Study Material / Upload PDF: POST /documents/upload]
     E --> F[6. Ask AI / POST /rag/query]
     F --> G[7. Generate Assessment / POST /quizzes/generate]
     G --> H[8. Submit Quiz / POST /quizzes/id/submit]
-    H --> I[9. Re-eval Gaps & Paths / Loop back to Step 3]
+    H -->|Score >= 75%| I[9. Auto-Upgrade Level / Loop back to Step 3]
+    H -->|Score < 75%| J[10. Generate Remediation Roadmap / POST /quizzes/results/result_id/roadmap]
+    J --> K[11. Complete Daily Remedial Tasks / PUT /roadmaps/tasks/task_id]
+    K --> G
 ```
 
 ### Detailed Sequence
@@ -30,19 +33,21 @@ graph TD
    - Call `POST /users` to register the official. Store the returned `user_id`.
    - Seed initial competency levels by calling `POST /users/{user_id}/competencies` for key statistical or technical skills.
 
-2. **Dashboard Load**:
+2. **Dashboard Load & Skill Pathways**:
    - Fetch skill gaps using `GET /users/{user_id}/skill-gaps` to render priority progress bars (e.g., Python gap = 3, High priority).
-   - Fetch recommended courses via `GET /users/{user_id}/recommendations` to render the user's personalized learning path cards.
+   - Fetch recommended courses via `GET /users/{user_id}/recommendations` to render general course cards.
+   - **Personalized Day-by-Day Roadmap**: Allow users to click "Generate Roadmap" for a targeted skill (like Python). Call `POST /users/{user_id}/roadmaps/generate` to build a day-by-day learning task checklist. Toggle daily checklist tasks via `PUT /roadmaps/tasks/{task_id}` to update overall roadmap progress percentage.
 
 3. **Active Learning (AI Assistant)**:
    - Allow trainers to upload study PDFs/handouts via `POST /documents/upload` (returns a `document_id`).
    - Render a chat UI where the student queries the AI tutor using `POST /rag/query` with the specified `document_id`.
 
-4. **Assessment & Loop closure**:
+4. **Assessment & Remediation Loop**:
    - Click "Take Quiz" which calls `POST /quizzes/generate` for the document context.
    - Render the generated MCQs (excluding correct options from GET schemas).
    - Post responses to `POST /quizzes/{quiz_id}/submit?user_id={user_id}`.
-   - If the score is $\ge 75\%$, the backend silently bumps their competency. Refresh the Dashboard (Step 2) to display the newly adjusted skill gaps and updated recommendations.
+   - **Scenario A (Pass - Score $\ge$ 75%)**: The backend automatically increments their competency `current_level` by 1. Refresh the Dashboard (Step 2) to display the newly adjusted skill gaps and updated recommendations.
+   - **Scenario B (Fail - Score $<$ 75%)**: The submission response returns a `result_id`. Render a "Generate Remedial Plan" button. Call `POST /quizzes/results/{result_id}/roadmap?number_of_days=3` to construct a day-by-day revision roadmap focusing *only* on the questions and topics the user answered incorrectly. Complete these revision tasks via `PUT /roadmaps/tasks/{task_id}` to prepare for a re-assessment.
 
 ---
 
