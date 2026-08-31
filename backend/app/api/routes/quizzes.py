@@ -10,9 +10,10 @@ router = APIRouter(prefix="/quizzes", tags=["Assessments & Quizzes"])
 
 @router.post("/generate", response_model=QuizResponse, status_code=status.HTTP_201_CREATED)
 def generate_quiz(req: QuizGenerateRequest, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == req.document_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    if req.document_id:
+        doc = db.query(Document).filter(Document.id == req.document_id).first()
+        if not doc:
+            raise HTTPException(status_code=404, detail="Document not found")
         
     db_quiz = QuizService.generate_and_save_quiz(db, req)
     return db_quiz

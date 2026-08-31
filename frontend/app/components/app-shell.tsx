@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { getCurrentUserId, getUser, UserProfile } from "../../lib/api";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
@@ -10,19 +14,6 @@ const navItems = [
   { href: "/ai-tutor", label: "AI Lab" },
 ];
 
-const communityStats = [
-  { label: "Assessments", value: "18", hint: "Last week 3" },
-  { label: "Courses", value: "12", hint: "Completed 4" },
-  { label: "Documents", value: "07", hint: "Ready for AI" },
-  { label: "Streak", value: "7", hint: "Best 12 days" },
-];
-
-const sideSkills = [
-  { label: "Statistics", value: "86%" },
-  { label: "Sampling", value: "73%" },
-  { label: "Visualization", value: "42%" },
-];
-
 export function AppShell({
   title,
   subtitle,
@@ -32,6 +23,52 @@ export function AppShell({
   subtitle?: string;
   children: React.ReactNode;
 }) {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [skills, setSkills] = useState<{ label: string; value: string }[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUser() {
+      try {
+        const userId = getCurrentUserId();
+        const data = await getUser(userId);
+        if (!active) return;
+        setProfile(data);
+
+        if (data.competencies?.length) {
+          const mapped = data.competencies.slice(0, 5).map((comp) => ({
+            label: comp.competency_name,
+            value: `${Math.round((comp.current_level / Math.max(comp.required_level, 1)) * 100)}%`,
+          }));
+          setSkills(mapped);
+        } else {
+          setSkills([]);
+        }
+      } catch {
+        // preserve
+      }
+    }
+
+    loadUser();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const displayName = profile?.name || "Official";
+  const displayRole = profile?.designation || profile?.job_role || "Civil Services";
+  const avatarLetter = displayName.trim().charAt(0).toUpperCase() || "O";
+
+  const overallAvg =
+    profile?.competencies && profile.competencies.length > 0
+      ? Math.round(
+          (profile.competencies.reduce((acc, c) => acc + c.current_level / Math.max(c.required_level, 1), 0) /
+            profile.competencies.length) *
+            100
+        )
+      : 0;
+
   return (
     <div className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)]">
       <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--header)]">
@@ -75,7 +112,7 @@ export function AppShell({
               className="grid h-10 w-10 place-items-center rounded-full bg-[#8fb4ff] text-sm font-bold text-[#13213d]"
               aria-label="Profile"
             >
-              R
+              {avatarLetter}
             </Link>
           </div>
         </div>
@@ -86,22 +123,24 @@ export function AppShell({
           <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
             <div className="flex gap-4">
               <div className="grid h-24 w-24 shrink-0 place-items-center rounded-md bg-[#a8c7ff] text-4xl font-black text-[#416fd9]">
-                R
+                {avatarLetter}
               </div>
               <div className="min-w-0 pt-1">
-                <h2 className="truncate text-lg font-semibold text-white">Roshan JT5</h2>
-                <p className="mt-1 text-sm text-[var(--muted)]">Statistical Officer</p>
-                <p className="mt-4 text-sm text-white">Readiness rank 42,46,168</p>
+                <h2 className="truncate text-lg font-semibold text-white">{displayName}</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">{displayRole}</p>
+                <p className="mt-2 text-xs text-emerald-400 font-medium">
+                  {profile?.department ? `${profile.department}` : "Official Statistical System"}
+                </p>
               </div>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-2 text-sm">
               <div className="rounded-md bg-[#1d1d1d] p-3">
-                <div className="text-xl font-semibold text-white">82%</div>
-                <div className="text-[var(--muted)]">Competency</div>
+                <div className="text-xl font-semibold text-white">{overallAvg}%</div>
+                <div className="text-[var(--muted)] text-xs mt-0.5">Competency Match</div>
               </div>
               <div className="rounded-md bg-[#1d1d1d] p-3">
-                <div className="text-xl font-semibold text-white">7 days</div>
-                <div className="text-[var(--muted)]">Streak</div>
+                <div className="text-xl font-semibold text-white">{profile?.competencies?.length ?? 0}</div>
+                <div className="text-[var(--muted)] text-xs mt-0.5">Tracked Skills</div>
               </div>
             </div>
             <Link
@@ -113,29 +152,36 @@ export function AppShell({
           </section>
 
           <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
-            <h2 className="text-base font-semibold text-white">Community Stats</h2>
-            <div className="mt-4 space-y-4">
-              {communityStats.map((stat) => (
-                <div key={stat.label} className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-sm text-white">{stat.label}</div>
-                    <div className="mt-1 text-xs text-[var(--muted-soft)]">{stat.hint}</div>
-                  </div>
-                  <div className="text-sm font-semibold text-white">{stat.value}</div>
-                </div>
-              ))}
+            <h2 className="text-base font-semibold text-white">Profile Overview</h2>
+            <div className="mt-4 space-y-3 text-xs">
+              <div className="flex items-start justify-between gap-2 border-b border-[#2b2b2b] pb-2">
+                <span className="text-[var(--muted)]">Department</span>
+                <span className="font-medium text-white text-right">{profile?.department || "Civil Service"}</span>
+              </div>
+              <div className="flex items-start justify-between gap-2 border-b border-[#2b2b2b] pb-2">
+                <span className="text-[var(--muted)]">Designation</span>
+                <span className="font-medium text-white text-right">{profile?.designation || "Officer"}</span>
+              </div>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[var(--muted)]">Career Goal</span>
+                <span className="font-medium text-emerald-300 text-right">{profile?.career_goal || "Competency Growth"}</span>
+              </div>
             </div>
           </section>
 
           <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
-            <h2 className="text-base font-semibold text-white">Languages</h2>
-            <div className="mt-4 space-y-3">
-              {sideSkills.map((skill) => (
-                <div key={skill.label} className="flex items-center justify-between text-sm">
-                  <span className="rounded-full bg-[#333333] px-3 py-1 text-[var(--muted)]">{skill.label}</span>
-                  <span className="text-white">{skill.value}</span>
-                </div>
-              ))}
+            <h2 className="text-base font-semibold text-white">Role Competencies</h2>
+            <div className="mt-4 space-y-2">
+              {skills.length ? (
+                skills.map((skill) => (
+                  <div key={skill.label} className="flex items-center justify-between text-xs rounded-md bg-[#282828] px-3 py-2">
+                    <span className="text-slate-200">{skill.label}</span>
+                    <span className="font-semibold text-emerald-400">{skill.value}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs text-[var(--muted)]">No competencies configured yet.</div>
+              )}
             </div>
           </section>
         </aside>

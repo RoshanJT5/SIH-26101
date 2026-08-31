@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Any
 import json
 
 class QuizGenerateRequest(BaseModel):
-    document_id: int
+    document_id: Optional[int] = None
     topic: Optional[str] = None
     number_of_questions: Optional[int] = 5
     difficulty: Optional[str] = "medium" # easy, medium, hard

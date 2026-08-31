@@ -14,6 +14,8 @@ def list_courses(
     skill: Optional[str] = None, 
     level: Optional[str] = None, 
     language: Optional[str] = None,
+    source: Optional[str] = None,
+    q: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Course)
@@ -29,6 +31,15 @@ def list_courses(
         query = query.filter(Course.level == level)
     if language:
         query = query.filter(Course.language == language)
+    if source:
+        query = query.filter(Course.source.like(f"%{source}%"))
+    if q:
+        search_pattern = f"%{q}%"
+        query = query.filter(
+            (Course.title.like(search_pattern)) | 
+            (Course.description.like(search_pattern)) |
+            (Course.skills.like(search_pattern))
+        )
         
     return query.all()
 

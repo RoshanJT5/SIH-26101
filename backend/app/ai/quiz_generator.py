@@ -20,24 +20,19 @@ class QuizGenerator:
     def generate_quiz_from_chunks(chunks_text: List[str], topic: str, num_questions: int, difficulty: str) -> dict:
         llm = get_llm()
         
-        context = "\n---\n".join(chunks_text[:10]) # Limit context to top 10 chunks to prevent token limits
-        
+        has_chunks = bool(chunks_text)
+        if has_chunks:
+            context = "\n---\n".join(chunks_text[:10]) # Limit context to top 10 chunks to prevent token limits
+            context_block = f"""Source Materials:\n{context}\n\nGenerate exactly {num_questions} questions.\nFor each question:\n1. Ensure the question is directly answerable from the Source Materials.\n2. Provide exactly 4 options. There must be no duplicate options.\n3. The 'correct_answer' field MUST exactly match one of the items in the 'options' list.\n4. Provide a thorough 'explanation' based on the Source Materials.\n5. Identify the subtopic and difficulty."""
+        else:
+            context_block = f"""Generate exactly {num_questions} high quality questions to evaluate knowledge of: {topic if topic else 'Official Statistical Methods'}.\nFor each question:\n1. Ensure questions evaluate real conceptual, methodological, and operational aspects of {topic}.\n2. Provide exactly 4 realistic options. There must be no duplicate options.\n3. The 'correct_answer' field MUST exactly match one of the items in the 'options' list.\n4. Provide an informative, educational 'explanation' detailing why the answer is correct.\n5. Identify the subtopic and difficulty."""
+
         prompt = f"""
-You are an expert trainer. Generate a multiple choice quiz based ONLY on the following source materials.
-Topic: {topic if topic else "General Content"}
+You are an expert government instructor and assessor. Generate a multiple choice quiz on the topic: {topic if topic else "General Content"}.
 Difficulty Level: {difficulty}
 Number of Questions: {num_questions}
 
-Source Materials:
-{context}
-
-Generate exactly {num_questions} questions.
-For each question:
-1. Ensure the question is directly answerable from the Source Materials. Do not use external facts.
-2. Provide exactly 4 options. There must be no duplicate options.
-3. The 'correct_answer' field MUST exactly match one of the items in the 'options' list.
-4. Provide a thorough 'explanation' based only on the Source Materials.
-5. Identify the subtopic and difficulty.
+{context_block}
 
 You MUST respond with a valid JSON object matching this schema:
 {{
@@ -47,9 +42,9 @@ You MUST respond with a valid JSON object matching this schema:
       "options": ["option 1", "option 2", "option 3", "option 4"],
       "correct_answer": "option 1",
       "explanation": "explanation text",
-      "topic": "topic name",
+      "topic": "{topic if topic else 'General'}",
       "difficulty": "{difficulty}",
-      "source_reference": "brief source location reference"
+      "source_reference": "Official Curriculum Reference"
     }}
   ]
 }}

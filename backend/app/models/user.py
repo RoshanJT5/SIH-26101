@@ -33,3 +33,12 @@ class UserCompetency(Base):
     # Relationships
     user = relationship("User", back_populates="competencies")
     competency = relationship("Competency", back_populates="user_links")
+
+    @property
+    def competency_name(self) -> str:
+        return self.competency.name if self.competency else "Unknown"
+
+    @property
+    def category(self) -> str:
+        return self.competency.category if self.competency else "Unknown"
+

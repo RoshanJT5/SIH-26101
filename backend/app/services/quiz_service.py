@@ -10,16 +10,18 @@ from app.schemas.quiz import QuizGenerateRequest, QuizSubmitRequest, QuizSubmitR
 class QuizService:
     @staticmethod
     def generate_and_save_quiz(db: Session, req: QuizGenerateRequest) -> Quiz:
-        # Retrieve document chunks to serve as context for the quiz
-        chunks = db.query(DocumentChunk).filter(DocumentChunk.document_id == req.document_id).all()
-        chunks_text = [c.content for c in chunks]
+        # Retrieve document chunks if document_id is provided
+        chunks_text = []
+        if req.document_id:
+            chunks = db.query(DocumentChunk).filter(DocumentChunk.document_id == req.document_id).all()
+            chunks_text = [c.content for c in chunks]
         
         # Call AI Generator
         quiz_data = QuizGenerator.generate_quiz_from_chunks(
             chunks_text=chunks_text,
-            topic=req.topic,
-            num_questions=req.number_of_questions,
-            difficulty=req.difficulty
+            topic=req.topic or "Official Statistics",
+            num_questions=req.number_of_questions or 5,
+            difficulty=req.difficulty or "medium"
         )
 
         # Create Quiz
@@ -103,17 +105,24 @@ class QuizService:
         db.commit()
         db.refresh(db_res) # Refresh to get result ID to return later if needed
 
-        # Update user competency level if score is high (G7 Requirement)
-        if score_percentage >= 75.0 and quiz.topic:
-            # Look for a competency matching quiz topic
-            comp = db.query(Competency).filter(Competency.name.like(f"%{quiz.topic}%")).first()
+        # Update user competency level if score is high (Passing >= 60%)
+        if score_percentage >= 60.0 and quiz.topic:
+            # Look for a competency matching quiz topic (case-insensitive)
+            topic_clean = quiz.topic.strip()
+            comp = db.query(Competency).filter(Competency.name.ilike(f"%{topic_clean}%")).first()
+            if not comp:
+                # Try word-by-word match
+                for word in topic_clean.split():
+                    if len(word) > 3:
+                        comp = db.query(Competency).filter(Competency.name.ilike(f"%{word}%")).first()
+                        if comp:
+                            break
             if comp:
                 uc = db.query(UserCompetency).filter(
                     UserCompetency.user_id == user_id,
                     UserCompetency.competency_id == comp.id
                 ).first()
                 if uc and uc.current_level < 5:
-                    # Bump up current level by 1
                     uc.current_level += 1
                     db.commit()
 

@@ -99,7 +99,7 @@ export default function Home() {
           <div className="mb-4 flex items-center justify-between border-b border-[var(--border)] pb-4">
             <div>
               <h2 className="text-lg font-semibold text-white">Officer Learning Profile</h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">Roshan JT5 / Statistical Officer</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">Statistical Officer / MoSPI &amp; Central Statistics</p>
             </div>
             <span className="rounded-md bg-[#14331f] px-2 py-1 text-xs text-[#37d46f]">82% ready</span>
           </div>

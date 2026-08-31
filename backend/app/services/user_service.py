@@ -70,3 +70,47 @@ class UserService:
     @staticmethod
     def get_user_competencies(db: Session, user_id: int):
         return db.query(UserCompetency).filter(UserCompetency.user_id == user_id).all()
+
+    @staticmethod
+    def seed_default_user(db: Session):
+        existing_user = db.query(User).first()
+        if existing_user:
+            return existing_user
+
+        default_user = User(
+            name="Roshan JT5",
+            email="roshan@stats.gov.in",
+            department="Department of Statistics",
+            designation="Statistical Officer",
+            job_role="Survey Analyst",
+            experience_years=5,
+            education="M.Sc Statistics",
+            career_goal="AI and Machine Learning Specialist"
+        )
+        db.add(default_user)
+        db.commit()
+        db.refresh(default_user)
+
+        # Seed initial competencies for default user
+        initial_skills = [
+            ("Python", 2, 5),
+            ("Data Visualization", 1, 4),
+            ("Survey Design", 3, 4),
+            ("Sampling", 3, 4),
+            ("SQL", 2, 4)
+        ]
+
+        for comp_name, cur_lvl, req_lvl in initial_skills:
+            comp = db.query(Competency).filter(Competency.name == comp_name).first()
+            if comp:
+                db_uc = UserCompetency(
+                    user_id=default_user.id,
+                    competency_id=comp.id,
+                    current_level=cur_lvl,
+                    required_level=req_lvl
+                )
+                db.add(db_uc)
+
+        db.commit()
+        return default_user
+

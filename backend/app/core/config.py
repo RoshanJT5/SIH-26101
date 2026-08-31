@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./sql_app.db"
     
     # AI Config
-    GROQ_API_KEY: str
+    GROQ_API_KEY: str = "gsk_mock_key_for_now"
     GROQ_MODEL: str = "mixtral-8x7b-32768"
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
     

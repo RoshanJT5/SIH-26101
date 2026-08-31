@@ -13,8 +13,8 @@ class UserCompetencyCreate(UserCompetencyBase):
 class UserCompetencyResponse(UserCompetencyBase):
     id: int
     user_id: int
-    competency_name: str
-    category: str
+    competency_name: Optional[str] = "Unknown"
+    category: Optional[str] = "Unknown"
     last_updated: datetime
 
     class Config:

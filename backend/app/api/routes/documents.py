@@ -1,12 +1,19 @@
 import os
 import shutil
+from typing import List
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 from sqlalchemy.orm import Session
 from app.api.dependencies import get_db
 from app.schemas.document import DocumentResponse
 from app.services.document_service import DocumentService
+from app.models.document import Document
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
+
+@router.get("", response_model=List[DocumentResponse])
+def list_documents(db: Session = Depends(get_db)):
+    return db.query(Document).all()
+
 
 UPLOAD_DIR = "uploads"
 if not os.path.exists(UPLOAD_DIR):

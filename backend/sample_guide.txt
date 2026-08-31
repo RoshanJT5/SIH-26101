@@ -1,0 +1,1 @@
+﻿Sampling Methods and Statistical Inferences: Stratified random sampling divides population into homogeneous strata.

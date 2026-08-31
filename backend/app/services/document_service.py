@@ -15,10 +15,27 @@ class DocumentService:
         # Returns list of tuples: (page_num, text)
         pages_content = []
         doc = fitz.open(file_path)
+        ocr_engine = None
         for page_idx, page in enumerate(doc):
             text = page.get_text()
-            if text.strip():
-                pages_content.append((page_idx + 1, text))
+            # If native text extraction has very little content, use OCR (for scanned notes or slide decks)
+            if not text or len(text.strip()) < 20:
+                try:
+                    if ocr_engine is None:
+                        from rapidocr_onnxruntime import RapidOCR
+                        ocr_engine = RapidOCR()
+                    pix = page.get_pixmap()
+                    img_bytes = pix.tobytes()
+                    ocr_res, _ = ocr_engine(img_bytes)
+                    if ocr_res:
+                        ocr_lines = [line[1] for line in ocr_res if line and len(line) > 1]
+                        if ocr_lines:
+                            text = "\n".join(ocr_lines)
+                except Exception:
+                    pass
+
+            if text and text.strip():
+                pages_content.append((page_idx + 1, text.strip()))
         return pages_content
 
     @staticmethod

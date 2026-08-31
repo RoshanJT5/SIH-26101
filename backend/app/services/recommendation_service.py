@@ -101,11 +101,16 @@ class RecommendationService:
 
             recommendations.append({
                 "course_id": course.id,
+                "external_id": course.external_id,
+                "source": course.source or "iGOT Karmayogi",
                 "title": course.title,
                 "description": course.description,
                 "score": round(score, 2),
                 "skills_addressed": [s.title() for s in course_skills],
-                "reason": reason
+                "reason": reason,
+                "level": course.level,
+                "duration_hours": course.duration_hours,
+                "course_url": getattr(course, "course_url", None) or "https://portal.igotkarmayogi.gov.in",
             })
 
         # Sort recommendations by score descending
@@ -114,61 +119,20 @@ class RecommendationService:
 
     @staticmethod
     def seed_courses(db: Session):
-        courses_data = [
-            {
-                "external_id": "IGOT001",
-                "source": "iGOT",
-                "title": "Introduction to Survey Sampling",
-                "description": "Learn the fundamentals of simple random sampling, stratified sampling, and estimation techniques.",
-                "level": "Beginner",
-                "duration_hours": 6,
-                "language": "English",
-                "skills": "Sampling,Survey Design"
-            },
-            {
-                "external_id": "IGOT002",
-                "source": "iGOT",
-                "title": "FastAPI: Building Modern REST APIs in Python",
-                "description": "Comprehensive guide to building high-performance APIs using FastAPI, Pydantic, and SQLAlchemy.",
-                "level": "Intermediate",
-                "duration_hours": 12,
-                "language": "English",
-                "skills": "Python,SQL,APIs"
-            },
-            {
-                "external_id": "IGOT003",
-                "source": "iGOT",
-                "title": "Introduction to AI & Machine Learning Foundations",
-                "description": "Get started with linear models, decision trees, neural networks, and prompt engineering.",
-                "level": "Beginner",
-                "duration_hours": 15,
-                "language": "English",
-                "skills": "AI/ML,Python"
-            },
-            {
-                "external_id": "IGOT004",
-                "source": "iGOT",
-                "title": "Data Governance, Security & Privacy",
-                "description": "Understanding Indian cybersecurity regulations, encryption standards, and digital signatures.",
-                "level": "Advanced",
-                "duration_hours": 8,
-                "language": "English",
-                "skills": "Cybersecurity,Data Privacy"
-            },
-            {
-                "external_id": "IGOT005",
-                "source": "iGOT",
-                "title": "Advanced SQL & Database Administration",
-                "description": "Mastering indexing, complex joins, stored procedures, and SQLite database systems.",
-                "level": "Intermediate",
-                "duration_hours": 10,
-                "language": "English",
-                "skills": "SQL"
-            }
-        ]
+        from app.services.igot_service import igot_provider
+        courses_data = igot_provider.list_all_courses()
         for c in courses_data:
-            exists = db.query(Course).filter(Course.external_id == c["external_id"]).first()
-            if not exists:
+            existing = db.query(Course).filter(Course.external_id == c["external_id"]).first()
+            if not existing:
                 db_course = Course(**c)
                 db.add(db_course)
+            else:
+                existing.source = c.get("source", "iGOT Karmayogi")
+                existing.title = c.get("title", existing.title)
+                existing.description = c.get("description", existing.description)
+                existing.level = c.get("level", existing.level)
+                existing.duration_hours = c.get("duration_hours", existing.duration_hours)
+                existing.language = c.get("language", existing.language)
+                existing.skills = c.get("skills", existing.skills)
+                existing.course_url = c.get("course_url", existing.course_url)
         db.commit()

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import engine, Base, SessionLocal
 from app.services.competency_service import CompetencyService
 from app.services.recommendation_service import RecommendationService
+from app.services.user_service import UserService
 
 # Import all models to ensure they are registered for table creation
 from app.models.user import User, UserCompetency
@@ -15,14 +16,30 @@ from app.models.progress import LearningHistory
 # Import routes
 from app.api.routes import users, competencies, skill_gaps, courses, documents, rag, quizzes, progress, roadmaps
 
+from sqlalchemy import text
+
 # Initialize tables
 Base.metadata.create_all(bind=engine)
+
+# Safe SQLite migrations
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE courses ADD COLUMN course_url VARCHAR"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("UPDATE courses SET course_url = 'https://portal.igotkarmayogi.gov.in' WHERE course_url LIKE '%/app/toc/%' OR course_url IS NULL"))
+        conn.commit()
+    except Exception:
+        pass
 
 # Seed basic data on startup
 db = SessionLocal()
 try:
     CompetencyService.seed_competencies(db)
     RecommendationService.seed_courses(db)
+    UserService.seed_default_user(db)
 finally:
     db.close()
 

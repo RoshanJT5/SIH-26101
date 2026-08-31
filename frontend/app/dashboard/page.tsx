@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "../components/app-shell";
-import { DUMMY_USER_ID, getUser, getUserRecommendations, getUserSkillGaps } from "../../lib/api";
+import { getCurrentUserId, getUser, getUserRecommendations, getUserSkillGaps } from "../../lib/api";
 
-const scoreBands = [
+const initialScoreBands = [
   { label: "Core", value: "19/24", color: "text-[var(--teal)]" },
   { label: "Applied", value: "3/12", color: "text-[var(--amber)]" },
   { label: "Priority", value: "0/7", color: "text-[var(--red)]" },
@@ -19,71 +19,84 @@ const activity = Array.from({ length: 168 }, (_, index) => {
   return 0;
 });
 
-const recentFallback = [
-  { title: "Statistical Inference Assessment", date: "10 days ago", state: "82% score" },
-  { title: "Survey Sampling Fundamentals", date: "14 days ago", state: "Completed" },
-  { title: "Data Visualization Gap Review", date: "21 days ago", state: "High priority" },
-  { title: "Official Statistics Manual Notes", date: "28 days ago", state: "AI summary" },
-];
-
-const gapFallback = [
-  { skill: "Data Visualization", current: 42, target: 80, severity: "High" },
-  { skill: "Statistical Inference", current: 61, target: 85, severity: "Medium" },
-  { skill: "Survey Methodology", current: 73, target: 85, severity: "Medium" },
-];
-
-const recommendationFallback = [
-  { title: "Visualizing Official Statistics", reason: "Your visualization score is 38 points below target.", match: "94%" },
-  { title: "Statistical Inference Refresher", reason: "Recent assessment accuracy is below the officer benchmark.", match: "88%" },
-];
-
 export default function DashboardPage() {
-  const [recent, setRecent] = useState(recentFallback);
-  const [gaps, setGaps] = useState(gapFallback);
-  const [recommendations, setRecommendations] = useState(recommendationFallback);
+  const [recent, setRecent] = useState<{ title: string; date: string; state: string }[]>([]);
+  const [gaps, setGaps] = useState<{ skill: string; current: number; target: number; severity: string }[]>([]);
+  const [recommendations, setRecommendations] = useState<{ externalId: string; title: string; reason: string; match: string; source: string; courseUrl: string }[]>([]);
+  const [solvedCount, setSolvedCount] = useState(0);
+  const [scoreBands, setScoreBands] = useState(initialScoreBands);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
 
     async function loadDashboard() {
       try {
+        const userId = getCurrentUserId();
         const [userResponse, skillResponse, recResponse] = await Promise.all([
-          getUser(DUMMY_USER_ID),
-          getUserSkillGaps(DUMMY_USER_ID),
-          getUserRecommendations(DUMMY_USER_ID),
+          getUser(userId),
+          getUserSkillGaps(userId),
+          getUserRecommendations(userId),
         ]);
 
         if (!active) return;
 
-        const userName = userResponse?.name || "Roshan JT5";
-        const formattedSkillGaps = (skillResponse?.skill_gaps ?? []).map((gap) => ({
+        const userName = userResponse?.name || "Official";
+        const comps = userResponse?.competencies || [];
+        const rawGaps = skillResponse?.skill_gaps ?? [];
+
+        // Solved skills: where current_level >= required_level
+        const solved = comps.filter((c) => c.current_level >= c.required_level).length;
+        setSolvedCount(solved);
+
+        // Core, Applied, Priority stats
+        const coreMet = comps.filter((c) => c.current_level >= c.required_level).length;
+        const inProg = comps.filter((c) => c.current_level < c.required_level).length;
+        const critGaps = rawGaps.filter((g) => g.priority === "HIGH" || g.priority === "CRITICAL").length;
+
+        setScoreBands([
+          { label: "Core Met", value: `${coreMet}/${comps.length || 1}`, color: "text-[var(--teal)]" },
+          { label: "In Progress", value: `${inProg}/${comps.length || 1}`, color: "text-[var(--amber)]" },
+          { label: "Priority Gaps", value: `${critGaps}/${rawGaps.length || 0}`, color: "text-[var(--red)]" },
+        ]);
+
+        const formattedSkillGaps = rawGaps.map((gap) => ({
           skill: gap.competency,
-          current: Math.max(10, Math.min(100, 100 - (gap.gap * 20))),
-          target: 85,
+          current: Math.max(10, Math.min(100, Math.round((gap.current_level / Math.max(gap.required_level, 1)) * 100))),
+          target: 100,
           severity: gap.priority === "HIGH" || gap.priority === "CRITICAL" ? "High" : gap.priority === "MEDIUM" ? "Medium" : "Low",
         }));
 
         const formattedRecommendations = (recResponse ?? []).map((item) => ({
+          externalId: item.external_id || "IGOT",
           title: item.title,
           reason: item.reason,
           match: `${Math.round(item.score * 100)}%`,
+          source: item.source || "iGOT Karmayogi",
+          courseUrl: (item.course_url && !item.course_url.includes("/app/toc/")) ? item.course_url : "https://portal.igotkarmayogi.gov.in",
         }));
 
-        setRecent([
-          { title: `${userName} skill profile`, date: "Today", state: "Synced from backend" },
-          { title: "Latest roadmap activity", date: "Recently", state: `${skillResponse?.skill_gaps?.length ?? 0} active gaps` },
-          { title: "Course recommendations refreshed", date: "Updated", state: `${(recResponse ?? []).length} matches` },
-          { title: "AI document summary", date: "Now", state: "Ready for revision" },
-        ]);
+        const activities = [
+          { title: `${userName} Profile Synced`, date: "Active", state: `${comps.length} competencies tracked` },
+        ];
+        if (rawGaps.length > 0) {
+          activities.push({ title: "Skill Gap Detection", date: "Recent", state: `${rawGaps.length} areas need training` });
+        }
+        if (formattedRecommendations.length > 0) {
+          activities.push({ title: "iGOT Recommendations", date: "Updated", state: `${formattedRecommendations.length} courses matched` });
+        }
 
-        setGaps(formattedSkillGaps.length ? formattedSkillGaps : gapFallback);
-        setRecommendations(formattedRecommendations.length ? formattedRecommendations : recommendationFallback);
+        setRecent(activities);
+        setGaps(formattedSkillGaps);
+        setRecommendations(formattedRecommendations);
       } catch {
         if (active) {
-          setRecent(recentFallback);
-          setGaps(gapFallback);
-          setRecommendations(recommendationFallback);
+          setRecent([]);
+          setGaps([]);
+          setRecommendations([]);
         }
+      } finally {
+        if (active) setLoading(false);
       }
     }
 
@@ -102,7 +115,7 @@ export default function DashboardPage() {
               <div className="relative grid h-44 w-44 place-items-center rounded-full bg-[conic-gradient(var(--teal)_0_46%,var(--amber)_46%_66%,var(--red)_66%_76%,#343434_76%_100%)]">
                 <div className="grid h-36 w-36 place-items-center rounded-full bg-[var(--panel)]">
                   <div className="text-center">
-                    <div className="text-4xl font-semibold text-white">22</div>
+                    <div className="text-4xl font-semibold text-white">{solvedCount}</div>
                     <div className="text-sm text-white">/ 4041 skills</div>
                     <div className="mt-1 text-sm text-[var(--green)]">Solved</div>
                   </div>
@@ -190,13 +203,19 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="mt-4 space-y-3">
-            {recent.map((item, index) => (
-              <div key={`${item.title}-${index}`} className={`grid gap-3 rounded-md px-4 py-4 text-sm sm:grid-cols-[1fr_auto_auto] ${index % 2 === 0 ? "bg-[#373737]" : "bg-transparent"}`}>
-                <span className="font-medium text-white">{item.title}</span>
-                <span className="text-[var(--muted)]">{item.state}</span>
-                <span className="text-[var(--muted)]">{item.date}</span>
-              </div>
-            ))}
+            {loading ? (
+              <div className="py-6 text-center text-xs text-[var(--muted)]">Loading activity log...</div>
+            ) : recent.length ? (
+              recent.map((item, index) => (
+                <div key={`${item.title}-${index}`} className={`grid gap-3 rounded-md px-4 py-4 text-sm sm:grid-cols-[1fr_auto_auto] ${index % 2 === 0 ? "bg-[#373737]" : "bg-transparent"}`}>
+                  <span className="font-medium text-white">{item.title}</span>
+                  <span className="text-[var(--muted)]">{item.state}</span>
+                  <span className="text-[var(--muted)]">{item.date}</span>
+                </div>
+              ))
+            ) : (
+              <div className="py-6 text-center text-xs text-[var(--muted)]">No recent activity records.</div>
+            )}
           </div>
         </section>
 
@@ -204,33 +223,61 @@ export default function DashboardPage() {
           <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
             <h2 className="text-lg font-semibold text-white">Priority gaps</h2>
             <div className="mt-4 space-y-4">
-              {gaps.map((gap) => (
-                <div key={gap.skill}>
-                  <div className="mb-2 flex justify-between text-sm">
-                    <span className="font-medium text-white">{gap.skill}</span>
-                    <span className="text-[var(--muted)]">{gap.severity}</span>
+              {loading ? (
+                <div className="py-4 text-center text-xs text-[var(--muted)]">Loading gaps...</div>
+              ) : gaps.length ? (
+                gaps.map((gap) => (
+                  <div key={gap.skill}>
+                    <div className="mb-2 flex justify-between text-sm">
+                      <span className="font-medium text-white">{gap.skill}</span>
+                      <span className="text-[var(--muted)]">{gap.severity}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-[#3a3a3a]">
+                      <div className="h-2 rounded-full bg-[var(--teal)]" style={{ width: `${gap.current}%` }} />
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--muted)]">Current {gap.current}% / Target {gap.target}%</div>
                   </div>
-                  <div className="h-2 rounded-full bg-[#3a3a3a]">
-                    <div className="h-2 rounded-full bg-[var(--teal)]" style={{ width: `${gap.current}%` }} />
-                  </div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">Current {gap.current}% / Target {gap.target}%</div>
+                ))
+              ) : (
+                <div className="py-4 text-center text-xs text-[var(--muted)]">
+                  No active skill gaps identified. All competencies meet role requirements.
                 </div>
-              ))}
+              )}
             </div>
           </section>
 
           <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
-            <h2 className="text-lg font-semibold text-white">AI recommendations</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">iGOT Recommendations</h2>
+              <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                🏛️ Official iGOT
+              </span>
+            </div>
             <div className="mt-4 space-y-3">
-              {recommendations.map((course) => (
-                <Link key={course.title} href="/courses" className="block rounded-md bg-[#303030] p-4 transition hover:bg-[#363636]">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-white">{course.title}</h3>
-                    <span className="shrink-0 rounded-md bg-[#14331f] px-2 py-1 text-xs text-[#37d46f]">{course.match}</span>
-                  </div>
-                  <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{course.reason}</p>
-                </Link>
-              ))}
+              {loading ? (
+                <div className="py-4 text-center text-xs text-[var(--muted)]">Loading recommendations...</div>
+              ) : recommendations.length ? (
+                recommendations.map((course) => (
+                  <Link key={course.title} href="/courses" className="block rounded-md bg-[#303030] p-4 transition hover:bg-[#363636]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        {course.externalId ? (
+                          <div className="text-[10px] font-mono text-sky-400 mb-0.5">{course.externalId}</div>
+                        ) : null}
+                        <h3 className="text-sm font-semibold text-white">{course.title}</h3>
+                      </div>
+                      <span className="shrink-0 rounded-md bg-[#14331f] px-2 py-1 text-xs text-[#37d46f]">{course.match}</span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{course.reason}</p>
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-emerald-400">
+                      <span>Source: {course.source || "iGOT Karmayogi"}</span>
+                      <span className="text-[var(--muted)] hover:text-white">View details →</span>
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                <div className="py-4 text-center text-xs text-[var(--muted)]">No recommendations pending.</div>
+              )}
             </div>
           </section>
         </aside>
