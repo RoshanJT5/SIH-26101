@@ -39,6 +39,10 @@ graph TD
   {
     "name": "Rahul Sharma",
     "email": "rahul@mospi.gov.in",
+    "password": "secure-password",
+    "mobile": "+91 98765 43210",
+    "employee_id": "GOV-STAT-1042",
+    "organization": "MoSPI",
     "department": "Ministry of Statistics and Programme Implementation",
     "designation": "Statistical Officer",
     "job_role": "Survey Analyst",
@@ -94,6 +98,30 @@ graph TD
     ]
   }
   ```
+* **Caching:** Responses are cached in SQLite by normalized question, selected document, document-content signature, and configured retrieval depth. Repeating the same question reuses the cached answer without another LLM call.
+
+---
+
+### **List User Profiles**
+* **Endpoint:** `GET /users`
+* **Description:** Returns all registered user profiles ordered by database ID. This endpoint is used by administration views and returns the same profile shape as `GET /users/{user_id}`.
+* **Response (`200 OK`):** Array of user profile objects.
+
+---
+
+### **Login**
+* **Endpoint:** `POST /users/login`
+* **Description:** Authenticates a registered user with their email and password. The frontend stores the returned user identity in session storage for the active browser session.
+* **Request Body:**
+  ```json
+  {
+    "email": "rahul@mospi.gov.in",
+    "password": "secure-password"
+  }
+  ```
+* **Response (`200 OK`):** Returns the authenticated user's `id`, `name`, `email`, and role details.
+
+Authentication is currently prototype-level: passwords are stored as bcrypt hashes in SQLite, and the frontend stores the authenticated user record in browser `sessionStorage` under `statlearn_auth_session`. The session is cleared when the browser session ends or the frontend explicitly logs out. API requests use the `user_id` returned by this endpoint for user-scoped operations.
 
 ---
 
@@ -103,6 +131,11 @@ graph TD
 * **Request Body:**
   ```json
   {
+    "name": "Rahul Sharma",
+    "email": "rahul@mospi.gov.in",
+    "mobile": "+91 98765 43210",
+    "employee_id": "GOV-STAT-1042",
+    "organization": "MoSPI",
     "career_goal": "Director of National Accounts & Economic Statistics"
   }
   ```
@@ -159,6 +192,14 @@ graph TD
     "last_updated": "2026-08-31T05:15:00"
   }
   ```
+
+---
+
+### **Get User Competencies**
+* **Endpoint:** `GET /users/{user_id}/competencies`
+* **Description:** Retrieves all competency records assigned to one user, including current level, required level, competency name, category, and last-updated timestamp.
+* **Response (`200 OK`):** Array of user competency objects.
+* **Errors:** Returns `404 Not Found` when the user does not exist.
 
 ---
 
@@ -225,6 +266,12 @@ graph TD
   ]
   ```
 
+### **Get Course Details**
+* **Endpoint:** `GET /courses/{course_id}`
+* **Description:** Retrieves one course from the official learning catalog by its database ID.
+* **Response (`200 OK`):** Returns the course `id`, `external_id`, `source`, `title`, `description`, `level`, `duration_hours`, `language`, `skills`, and `course_url`.
+* **Errors:** Returns `404 Not Found` when the course does not exist.
+
 ---
 
 ### **Get Personalized Recommendations**
@@ -255,9 +302,10 @@ graph TD
 
 ### **Upload Learning Document**
 * **Endpoint:** `POST /documents/upload`
-* **Description:** Uploads official government manuals or handouts. Automatically parses text, chunks content, generates embeddings, and indexes for semantic search.
+* **Description:** Uploads official government manuals or handouts. Automatically extracts text, uses RapidOCR for scanned PDF pages with little or no native text, chunks content, generates embeddings, and indexes it for semantic search and quiz generation.
 * **Request Type:** `multipart/form-data`
 * **Form Field:** `file` (Supports `.pdf`, `.docx`, `.pptx`, `.txt`)
+* **Client Note:** Send the file as `FormData` under the field name `file`; do not set `Content-Type` manually because the browser must add the multipart boundary.
 * **Response (`201 Created`):**
   ```json
   {
@@ -350,6 +398,7 @@ graph TD
     ]
   }
   ```
+* **Caching:** Generated quizzes are cached in SQLite by normalized topic, document, question count, difficulty, and document-content signature. Repeating the same generation request returns the previously saved quiz and does not spend additional model tokens.
 
 ---
 
@@ -378,6 +427,14 @@ graph TD
     "result_id": 8
   }
   ```
+
+---
+
+### **Get Quiz**
+* **Endpoint:** `GET /quizzes/{quiz_id}`
+* **Description:** Retrieves a generated quiz and its client-safe questions. Correct answers and explanations are not returned in this response.
+* **Response (`200 OK`):** Returns the quiz `id`, optional `document_id`, `topic`, `difficulty`, and question objects containing `id`, `question_text`, `options`, `topic`, `difficulty`, and `source_reference`.
+* **Errors:** Returns `404 Not Found` when the quiz does not exist.
 
 ---
 
@@ -494,3 +551,32 @@ graph TD
 * **Endpoint:** `GET /users/{user_id}/progress`
 * **Description:** Returns all course progress records for the user.
 * **Response (`200 OK`):** Array of `CourseProgress` items.
+
+---
+
+## 8. Admin Portal
+
+### **Get Admin Overview**
+* **Endpoint:** `GET /admin/overview`
+* **Description:** Returns platform-level learner, enrollment, completion, roadmap, assessment, department, and critical skill-gap metrics.
+* **Response (`200 OK`):** Includes `total_learners`, `total_courses_enrolled`, `completed_courses`, `active_roadmaps`, `total_assessments_taken`, `avg_assessment_score`, `department_stats`, and `critical_skill_gaps`.
+
+### **List Admin Learners**
+* **Endpoint:** `GET /admin/learners`
+* **Description:** Returns all learners with profile information, competency readiness, course enrollments, roadmaps, and quiz results for administration views.
+* **Response (`200 OK`):** Array of learner overview objects.
+
+### **Get Admin Learner Detail**
+* **Endpoint:** `GET /admin/learners/{user_id}`
+* **Description:** Returns the complete administration view for one learner, including competencies, courses, roadmaps, quiz results, and readiness rating.
+* **Response (`200 OK`):** Learner detail object.
+* **Errors:** Returns `404 Not Found` when the learner does not exist.
+
+---
+
+## 9. API Integration Notes
+
+* The backend mounts every route under `/api/v1`.
+* Direct backend base URL: `http://localhost:8000/api/v1`.
+* Frontend development requests use `/api/v1`, which Next.js proxies to the backend at `http://127.0.0.1:8000/api/v1`.
+* User-scoped endpoints require the `user_id` path parameter or query parameter shown in each endpoint. The prototype frontend obtains this value from the authenticated `sessionStorage` record.

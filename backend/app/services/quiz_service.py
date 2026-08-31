@@ -1,6 +1,8 @@
 import json
+import hashlib
 from sqlalchemy.orm import Session
 from app.models.quiz import Quiz, Question, QuizResult
+from app.models.ai_cache import AICache
 from app.models.document import DocumentChunk
 from app.models.user import UserCompetency
 from app.models.competency import Competency
@@ -9,12 +11,39 @@ from app.schemas.quiz import QuizGenerateRequest, QuizSubmitRequest, QuizSubmitR
 
 class QuizService:
     @staticmethod
+    def _cache_key(req: QuizGenerateRequest, chunks_text: list[str]) -> str:
+        source_signature = hashlib.sha256(
+            "\n".join(chunks_text).encode("utf-8")
+        ).hexdigest()
+        request_data = {
+            "document_id": req.document_id,
+            "topic": (req.topic or "Official Statistics").strip().casefold(),
+            "number_of_questions": req.number_of_questions or 5,
+            "difficulty": (req.difficulty or "medium").strip().casefold(),
+            "source_signature": source_signature,
+        }
+        return hashlib.sha256(json.dumps(request_data, sort_keys=True).encode("utf-8")).hexdigest()
+
+    @staticmethod
     def generate_and_save_quiz(db: Session, req: QuizGenerateRequest) -> Quiz:
         # Retrieve document chunks if document_id is provided
         chunks_text = []
         if req.document_id:
             chunks = db.query(DocumentChunk).filter(DocumentChunk.document_id == req.document_id).all()
             chunks_text = [c.content for c in chunks]
+
+        cache_key = QuizService._cache_key(req, chunks_text)
+        cached = db.query(AICache).filter(
+            AICache.cache_type == "quiz",
+            AICache.cache_key == cache_key,
+        ).first()
+        if cached:
+            cached_payload = json.loads(cached.payload)
+            cached_quiz = QuizService.get_quiz(db, cached_payload["quiz_id"])
+            if cached_quiz:
+                return cached_quiz
+            db.delete(cached)
+            db.commit()
         
         # Call AI Generator
         quiz_data = QuizGenerator.generate_quiz_from_chunks(
@@ -51,6 +80,13 @@ class QuizService:
         
         db.commit()
         db.refresh(db_quiz)
+
+        db.add(AICache(
+            cache_type="quiz",
+            cache_key=cache_key,
+            payload=json.dumps({"quiz_id": db_quiz.id}),
+        ))
+        db.commit()
         return db_quiz
 
     @staticmethod

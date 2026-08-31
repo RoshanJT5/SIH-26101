@@ -1,6 +1,6 @@
 # SIH 2026 Project Connection Status
 
-This document records the current state of the frontend-backend integration for the SIH 2026 project. It is intended to serve as a working reference for the next phase of development and feature expansion.
+This document records the current state of the frontend-backend integration for the SIH 2026 project.
 
 ## 1. Project Overview
 
@@ -25,12 +25,13 @@ The frontend is a dark-themed dashboard-style learning app designed to match the
 
 ## 2. Scope of the Work Done
 
-The work completed so far focused on one specific goal:
+The current integration covers the full prototype workflow:
 
 - Connect the existing frontend screens to the backend API contract
 - Keep the current UI/UX intact
-- Avoid changing backend logic or business rules
-- Use a dummy auth/user model because there is no real authentication system currently implemented
+- Connect the Next.js application to the FastAPI API under `/api/v1`
+- Persist users, learning data, uploaded documents, AI cache entries, and profile fields in SQLite
+- Provide prototype authentication with bcrypt password hashing and browser session storage
 
 This means the frontend is now wired to the backend for most of the core product flows while preserving the visual design already developed.
 
@@ -50,20 +51,17 @@ This is the base that the frontend uses while calling API endpoints.
 
 ---
 
-## 4. Dummy Auth / Testing Approach
+## 4. Prototype Authentication
 
-The backend currently does not have a full authentication system implemented.
+The prototype authentication flow is implemented in the backend and frontend:
+- `POST /api/v1/users` registers users in SQLite and stores bcrypt password hashes
+- `POST /api/v1/users/login` verifies credentials
+- The frontend stores the authenticated user record in `sessionStorage` under `statlearn_auth_session`
+- Protected workspace pages redirect to `/login` when no session exists
+- Logout clears the session and returns to `/login`
+- `/profile` updates name, email, mobile, employee ID, organization, department, designation, education, and career goal
 
-Because of this:
-- The frontend is operating in a dummy mode for user identity
-- A fixed user ID is used while testing the app
-- The integration behaves as if the logged-in user is a valid internal user
-
-This is intentional and was kept separate from the backend logic so that no authentication changes were needed in the API layer.
-
-Important note:
-- The frontend is not pretending to be production-ready auth
-- It is simply a prototype flow for testing end-to-end UI and API behavior
+This remains prototype authentication rather than production token/session infrastructure.
 
 ---
 
@@ -142,11 +140,14 @@ Purpose:
 Fallback behavior:
 - If the upload fails, the filename still appears locally so the UI remains usable for demo testing.
 
-### 5.6 AI Tutor Page
+### 5.6 Documents and AI Tutor Pages
 File: frontend/app/ai-tutor/page.tsx
 
 Connected data:
+- Document upload/list endpoints
 - RAG query endpoint for AI tutor responses
+- RapidOCR processing for scanned PDFs
+- React Markdown response rendering and local greeting handling
 
 Purpose:
 - Ask a question and receive an answer grounded in uploaded documents or AI knowledge sources
@@ -159,7 +160,9 @@ File: frontend/app/assessments/page.tsx
 
 Connected data:
 - Quiz generation endpoint
+- Quiz retrieval endpoint
 - Quiz submission endpoint
+- SQLite quiz cache for repeated generation requests
 
 Purpose:
 - Generate assessment questions
@@ -223,24 +226,22 @@ The frontend is connected to the following backend features:
 
 ---
 
-## 8. What Remains Pending
+## 8. Caching and Runtime Data
 
-These items are still not fully finalized or may still need deeper connection work depending on backend behavior and response contracts:
+AI generation is persisted in SQLite:
+- Generated quizzes are reused by normalized topic, document, count, difficulty, and document-content signature
+- RAG answers are reused by normalized question, selected document, retrieval depth, and document-content signature
+- New document content produces a new cache key, avoiding stale answers
+- Theme preference uses `localStorage`; authenticated identity uses `sessionStorage`
 
-### 8.1 Authentication
-- No actual login/register backend flow is implemented
-- Frontend auth remains dummy
+## 9. Current Validation
 
-### 8.2 Fine-grained response mapping
-- Some backend responses may need deeper normalization depending on the exact JSON structure returned in live usage
-- The frontend currently includes fallbacks to protect the UI and avoid crashes
-
-### 8.3 AI Tutor and Quiz endpoints
-- These are connected but still need validation against the exact live backend payloads for edge cases
-- Some questions/responses may need a final refinement when the backend responses are fully tested in real runtime
-
-### 8.4 Additional dynamic behavior
-- More advanced UI polish and route behavior can be added later once the business logic is stabilized
+- Backend API tests: `7 passed`
+- Frontend production build: passed
+- Live admin overview and learner directory counts match
+- Registration, login, profile update, and profile fetch verified end to end
+- Multipart document upload request validated after removing the incorrect JSON content type
+- RapidOCR dependency imports successfully on the project Python 3.14 environment
 
 ---
 
@@ -260,11 +261,11 @@ The integration work was done without disturbing the visual product concept. Thi
 
 The project is currently in this state:
 
-- Frontend mostly connected to backend for core features
-- UI remains visually unchanged
-- Backend logic was not tampered with
-- Dummy auth is still in place by design
-- Remaining work is mainly about finalizing edge-case data mapping and feature polish
+- Frontend and backend are connected for the main learner and admin workflows
+- SQLite persistence is used for users, progress, documents, quizzes, and AI cache records
+- Prototype auth, route protection, profile editing, logout, and session-aware landing navigation are implemented
+- AI Tutor supports local multilingual greetings, structured Markdown responses, and cached RAG answers
+- Document uploads support PDF, DOCX, PPTX, TXT, with RapidOCR fallback for scanned PDFs
 
 ---
 
@@ -272,16 +273,15 @@ The project is currently in this state:
 
 The next phase should focus on:
 
-1. Confirming exact live payloads from all backend endpoints
-2. Refining edge-case handling in the frontend API layer
-3. Finalizing the remaining authentication strategy when the backend adds auth
-4. Testing AI tutor and quiz flows in a live environment with real inputs
-5. Expanding new features only after the current connection is stable
+1. Add production-grade token-based authentication when required
+2. Move large document/embedding storage to object storage/vector infrastructure for deployment
+3. Add automated browser tests for protected routes and upload UI
+4. Add cache expiry/eviction policy if the prototype grows
 
 ---
 
 ## 12. Final Status
 
-Status: Partially completed but functionally connected for the main expected workflow.
+Status: Functionally connected prototype with SQLite persistence, prototype authentication, OCR upload processing, and AI response caching.
 
 The system is now ready for the next round of backend/frontend validation and feature expansion.

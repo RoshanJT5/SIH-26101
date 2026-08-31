@@ -2,7 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from app.api.dependencies import get_db
-from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserCompetencyCreate, UserCompetencyResponse
+from app.schemas.user import (
+    UserCreate,
+    UserUpdate,
+    UserResponse,
+    UserCompetencyCreate,
+    UserCompetencyResponse,
+    UserLogin,
+    AuthUserResponse,
+)
 from app.services.user_service import UserService
 from app.models.competency import Competency
 
@@ -10,7 +18,22 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
-    return UserService.create_user(db, user_in)
+    try:
+        user = UserService.create_user(db, user_in)
+        return user
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+@router.post("/login", response_model=AuthUserResponse)
+def login_user(payload: UserLogin, db: Session = Depends(get_db)):
+    user = UserService.authenticate_user(db, payload.email, payload.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return user
+
+@router.get("", response_model=List[UserResponse])
+def get_all_users(db: Session = Depends(get_db)):
+    return UserService.get_all_users(db)
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(user_id: int, db: Session = Depends(get_db)):
@@ -21,7 +44,10 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{user_id}", response_model=UserResponse)
 def update_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db)):
-    user = UserService.update_user(db, user_id, user_in)
+    try:
+        user = UserService.update_user(db, user_id, user_in)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

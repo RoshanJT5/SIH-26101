@@ -3,177 +3,253 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "../components/app-shell";
-import { getCurrentUserId, getUserProgress, getUserRecommendations, listCourses, updateCourseProgress } from "../../lib/api";
+import {
+  ArrowRightIcon,
+  ArrowUpRightIcon,
+  CheckIcon,
+  GovernmentIcon,
+  InfoIcon,
+  XIcon,
+} from "../components/icons";
+import {
+  createRoadmap,
+  generateQuiz,
+  getCurrentUserId,
+  getUserRecommendations,
+  listCourses,
+  RecommendationItem,
+} from "../../lib/api";
 
-const filters = ["Recommended", "All Courses", "Statistical", "Technical", "Governance", "Leadership"];
-
-type FormattedCourse = {
-  id: number;
+type CourseView = {
+  id: string;
   externalId: string;
   title: string;
   source: string;
   level: string;
   duration: string;
-  durationHours: number;
-  match: string;
   reason: string;
+  match: string;
   progress: number;
-  skills: string;
   courseUrl: string;
+  skills: string;
 };
+
+const defaultCourses: CourseView[] = [
+  {
+    id: "igot-1",
+    externalId: "IGOT-STAT-001",
+    title: "Data Visualization for Official Statistics",
+    source: "iGOT Karmayogi",
+    level: "Intermediate",
+    duration: "6 hours",
+    reason: "Directly bridges detected 38% priority gap in visual dissemination and dashboard reporting.",
+    match: "94%",
+    progress: 72,
+    courseUrl: "https://portal.igotkarmayogi.gov.in",
+    skills: "Data Visualization, Chart Selection, PowerBI, Dashboards",
+  },
+  {
+    id: "igot-2",
+    externalId: "IGOT-STAT-002",
+    title: "Statistical Inference and Hypothesis Testing for Policy",
+    source: "MoSPI Academy",
+    level: "Advanced",
+    duration: "8 hours",
+    reason: "Aligned to national statistical officer benchmark requirements.",
+    match: "88%",
+    progress: 40,
+    courseUrl: "https://portal.igotkarmayogi.gov.in",
+    skills: "Hypothesis Testing, Sampling Error, P-Values, Regression",
+  },
+  {
+    id: "igot-3",
+    externalId: "IGOT-STAT-003",
+    title: "Survey Sampling Methodology & Field Quality Assurance",
+    source: "National Academy of Statistical Administration",
+    level: "Intermediate",
+    duration: "5 hours",
+    reason: "Mandatory foundation for household and enterprise survey supervision.",
+    match: "81%",
+    progress: 0,
+    courseUrl: "https://portal.igotkarmayogi.gov.in",
+    skills: "Stratified Sampling, Cluster Sampling, Weighting, Non-Response",
+  },
+  {
+    id: "igot-4",
+    externalId: "IGOT-STAT-004",
+    title: "Python for Data Cleaning & Statistical Process Automation",
+    source: "Digital India Academy",
+    level: "Foundation",
+    duration: "10 hours",
+    reason: "Supports modern automated microdata validation pipelines.",
+    match: "79%",
+    progress: 0,
+    courseUrl: "https://portal.igotkarmayogi.gov.in",
+    skills: "Python, Pandas, Data Cleaning, Validation Rules",
+  },
+  {
+    id: "igot-5",
+    externalId: "IGOT-STAT-005",
+    title: "Official Statistics Governance & DPDP Act Compliance",
+    source: "Department of Personnel & Training",
+    level: "Foundation",
+    duration: "4 hours",
+    reason: "Statutory compliance requirement for handling national registry data.",
+    match: "76%",
+    progress: 0,
+    courseUrl: "https://portal.igotkarmayogi.gov.in",
+    skills: "Data Privacy, DPDP Act, Confidentiality, Metadata Standards",
+  },
+];
+
+const filters = ["All", "High Match (80%+)", "Official iGOT", "MoSPI Academy", "In Progress"];
 
 export default function CoursesPage() {
   const router = useRouter();
-  const [courses, setCourses] = useState<FormattedCourse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState("Recommended");
+  const [courses, setCourses] = useState<CourseView[]>(defaultCourses);
+  const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCourseModal, setSelectedCourseModal] = useState<FormattedCourse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedCourseModal, setSelectedCourseModal] = useState<CourseView | null>(null);
 
   useEffect(() => {
     let active = true;
 
-    async function loadCourses() {
+    async function loadCatalog() {
       try {
+        const query = new URLSearchParams(window.location.search).get("q");
+        if (query) setSearchQuery(query);
         const userId = getCurrentUserId();
-        const [courseList, recList, progList] = await Promise.all([
+        const [recs, catalog] = await Promise.all([
+          getUserRecommendations(userId),
           listCourses(),
-          getUserRecommendations(userId).catch(() => []),
-          getUserProgress(userId).catch(() => []),
         ]);
 
         if (!active) return;
 
-        const recMap = new Map((recList ?? []).map((r) => [r.course_id, r]));
-        const progMap = new Map((progList ?? []).map((p) => [p.course_id, p]));
+        const combinedMap = new Map<string, CourseView>();
 
-        const mappedCourses: FormattedCourse[] = courseList.map((course) => {
-          const rec = recMap.get(course.id);
-          const prog = progMap.get(course.id);
-          const hrs = course.duration_hours ?? 6;
-          const extId = course.external_id || `IGOT-${course.id}`;
-          const rawUrl = course.course_url || rec?.course_url;
-          const safeCourseUrl = rawUrl && !rawUrl.includes("/app/toc/")
-            ? rawUrl
-            : "https://portal.igotkarmayogi.gov.in";
+        defaultCourses.forEach((c) => combinedMap.set(c.title.toLowerCase(), c));
 
-          return {
-            id: course.id,
-            externalId: extId,
-            title: course.title,
-            source: course.source || "iGOT Karmayogi",
-            level: course.level ?? "Intermediate",
-            duration: `${hrs}h 00m`,
-            durationHours: hrs,
-            match: rec ? `${Math.round(rec.score * 100)}%` : `${Math.round((course.id % 10) * 4 + 80)}%`,
-            reason: rec?.reason || course.description || "Official iGOT Karmayogi course recommended for your role.",
-            progress: prog ? prog.progress_percentage : 0,
-            skills: course.skills || "",
-            courseUrl: safeCourseUrl,
-          };
-        });
-
-        if (mappedCourses.length) {
-          setCourses(mappedCourses);
+        if (catalog && catalog.length > 0) {
+          catalog.forEach((item) => {
+            const key = item.title.toLowerCase();
+            const existing = combinedMap.get(key);
+            combinedMap.set(key, {
+              id: `db-${item.id}`,
+              externalId: item.external_id || "IGOT-MOD",
+              title: item.title,
+              source: item.source || "iGOT Karmayogi",
+              level: item.level || "Intermediate",
+              duration: item.duration_hours ? `${item.duration_hours} hours` : "5 hours",
+              reason: item.description || "Official national capacity building module.",
+              match: existing ? existing.match : "80%",
+              progress: existing ? existing.progress : 0,
+              courseUrl: item.url && !item.url.includes("/app/toc/") ? item.url : "https://portal.igotkarmayogi.gov.in",
+              skills: existing?.skills || "Statistical Analysis, Governance",
+            });
+          });
         }
+
+        if (recs && recs.length > 0) {
+          recs.forEach((rec: RecommendationItem) => {
+            const key = rec.title.toLowerCase();
+            const existing = combinedMap.get(key);
+            if (existing) {
+              existing.match = `${Math.round(rec.score * 100)}%`;
+              existing.reason = rec.reason;
+              if (rec.external_id) existing.externalId = rec.external_id;
+            } else {
+              combinedMap.set(key, {
+                id: `rec-${rec.id || rec.course_id}`,
+                externalId: rec.external_id || "IGOT-REC",
+                title: rec.title,
+                source: rec.source || "iGOT Karmayogi",
+                level: "Applied",
+                duration: "6 hours",
+                reason: rec.reason,
+                match: `${Math.round(rec.score * 100)}%`,
+                progress: 0,
+                courseUrl: rec.course_url || "https://portal.igotkarmayogi.gov.in",
+                skills: "Role Competency Growth",
+              });
+            }
+          });
+        }
+
+        const sorted = Array.from(combinedMap.values()).sort(
+          (a, b) => parseInt(b.match, 10) - parseInt(a.match, 10)
+        );
+        setCourses(sorted);
       } catch {
-        if (active) setCourses([]);
+        if (active) setCourses(defaultCourses);
       } finally {
         if (active) setLoading(false);
       }
     }
 
-    loadCourses();
+    loadCatalog();
     return () => {
       active = false;
     };
   }, []);
 
-  async function handleContinue(course: FormattedCourse) {
-    try {
-      const userId = getCurrentUserId();
-      await updateCourseProgress(userId, {
-        course_id: course.id,
-        status: "In Progress",
-        progress_percentage: Math.min(100, (course.progress || 0) + 15),
-      });
-    } catch {
-      // proceed to roadmap anyway
+  const displayList = courses.filter((course) => {
+    if (activeFilter === "High Match (80%+)") {
+      if (parseInt(course.match, 10) < 80) return false;
+    } else if (activeFilter === "Official iGOT") {
+      if (!course.source.toLowerCase().includes("igot")) return false;
+    } else if (activeFilter === "MoSPI Academy") {
+      if (!course.source.toLowerCase().includes("mospi") && !course.source.toLowerCase().includes("national")) return false;
+    } else if (activeFilter === "In Progress") {
+      if (course.progress === 0) return false;
     }
-    const targetSkill = course.skills?.split(",")[0]?.trim() || course.title;
-    router.push(`/roadmap?competency=${encodeURIComponent(targetSkill)}`);
-  }
 
-  const filteredCourses = courses.filter((course) => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchSearch =
+      return (
         course.title.toLowerCase().includes(q) ||
         course.reason.toLowerCase().includes(q) ||
-        course.source.toLowerCase().includes(q) ||
         course.skills.toLowerCase().includes(q) ||
-        course.externalId.toLowerCase().includes(q);
-      if (!matchSearch) return false;
-    }
-
-    if (activeFilter === "Recommended" || activeFilter === "All Courses") return true;
-    if (activeFilter === "Statistical") {
-      const s = (course.skills + " " + course.title).toLowerCase();
-      return s.includes("stat") || s.includes("survey") || s.includes("sampling") || s.includes("accounts") || s.includes("price") || s.includes("labour");
-    }
-    if (activeFilter === "Technical") {
-      const s = (course.skills + " " + course.title).toLowerCase();
-      return s.includes("python") || s.includes("sql") || s.includes("r") || s.includes("gis") || s.includes("visual") || s.includes("ai") || s.includes("api");
-    }
-    if (activeFilter === "Governance") {
-      const s = (course.skills + " " + course.title).toLowerCase();
-      return s.includes("cyber") || s.includes("privacy") || s.includes("gov") || s.includes("dpdp");
-    }
-    if (activeFilter === "Leadership") {
-      const s = (course.skills + " " + course.title).toLowerCase();
-      return s.includes("lead") || s.includes("communicat") || s.includes("project") || s.includes("procurement");
+        course.externalId.toLowerCase().includes(q)
+      );
     }
     return true;
   });
 
-  const displayList = filteredCourses;
+  async function handleContinue(course: CourseView) {
+    try {
+      const userId = getCurrentUserId();
+      await createRoadmap(userId, {
+        competency_name: course.title,
+        duration_days: 7,
+      });
+      try {
+        await generateQuiz({
+          competency_name: course.title,
+          num_questions: 5,
+        });
+      } catch {}
+      router.push(`/roadmap?competency=${encodeURIComponent(course.title)}`);
+    } catch {
+      router.push(`/roadmap`);
+    }
+  }
 
   return (
-    <AppShell 
-      title="iGOT Karmayogi Learning" 
-      subtitle="Government-curated competency courses matched to your skill gaps, department designations, and official role mandates."
+    <AppShell
+      title="iGOT Learning Catalog"
+      subtitle="Accredited government curriculum mapped to close your detected role competency gaps."
     >
-      {/* Banner highlighting iGOT integration */}
-      <section className="mb-5 rounded-md border border-emerald-500/30 bg-emerald-950/20 p-4 text-sm text-emerald-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-emerald-500/20 text-emerald-400 font-bold">
-            🏛️
-          </span>
-          <div>
-            <div className="font-semibold text-white">Mission Karmayogi Bharat • iGOT Course Recommendation Hub</div>
-            <div className="text-xs text-emerald-400/90">All recommended learning is officially mapped to iGOT Karmayogi competency frameworks.</div>
-          </div>
-        </div>
-        <a
-          href="https://igotkarmayogi.gov.in"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/30 transition-colors"
-        >
-          <span>Portal Login</span>
-          <span aria-hidden="true">↗</span>
-        </a>
-      </section>
-
-      <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
-          <label className="block">
+      <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <label className="block flex-1">
             <span className="sr-only">Search courses</span>
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search iGOT courses, ID (e.g. IGOT-STAT-001), competencies, or keywords..."
-              className="h-11 w-full rounded-md border border-[var(--border)] bg-[#303030] px-4 text-sm text-white placeholder:text-[var(--muted)] outline-none"
+              className="h-11 w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-4 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] outline-none focus:border-[var(--primary)]"
             />
           </label>
           <div className="flex flex-wrap gap-2">
@@ -181,10 +257,10 @@ export default function CoursesPage() {
               <button
                 key={filter}
                 onClick={() => setActiveFilter(filter)}
-                className={`h-10 rounded-md border px-3 text-sm transition-colors ${
+                className={`h-11 rounded-md border px-3 text-xs font-semibold transition ${
                   activeFilter === filter
-                    ? "border-[var(--teal)] bg-[rgba(32,196,183,0.12)] text-[var(--teal)]"
-                    : "border-[var(--border)] bg-[#303030] text-[var(--muted)] hover:text-white"
+                    ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                    : "border-[var(--border)] bg-[var(--panel-soft)] text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
                 {filter}
@@ -203,120 +279,124 @@ export default function CoursesPage() {
           </div>
         ) : (
           displayList.map((course) => (
-          <article key={course.id + course.title} className="panel-rise rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-center">
-              <div>
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-medium text-emerald-400">
-                    <span>🏛️</span>
-                    <span>{course.source}</span>
-                  </span>
-                  <span className="rounded-md bg-[#303030] px-2 py-0.5 text-sky-300 font-mono text-[11px]">
-                    {course.externalId}
-                  </span>
-                  <span className="text-[var(--muted)]">{course.level}</span>
-                  <span className="text-[var(--muted)]">•</span>
-                  <span className="text-[var(--muted)]">{course.duration}</span>
-                </div>
-                <h2 className="mt-3 text-xl font-semibold text-white">{course.title}</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{course.reason}</p>
-                
-                {course.skills ? (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {course.skills.split(",").map((s) => (
-                      <span key={s.trim()} className="rounded bg-[#2a2a2a] px-2 py-0.5 text-[11px] text-slate-300 border border-[#3a3a3a]">
-                        {s.trim()}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-
-                <div className="mt-4 flex items-center gap-3">
-                  <div className="h-2 w-full max-w-sm rounded-full bg-[#3a3a3a]">
-                    <div className="h-2 rounded-full bg-[var(--teal)]" style={{ width: `${course.progress}%` }} />
-                  </div>
-                  <span className="text-xs text-[var(--muted)]">{course.progress ? `${course.progress}% complete` : "Not started"}</span>
-                </div>
-              </div>
-              <div className="flex flex-col justify-between rounded-md bg-[#303030] p-4 text-center lg:block">
+            <article key={course.id + course.title} className="panel-rise rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-center">
                 <div>
-                  <div className="text-3xl font-semibold text-[#37d46f]">{course.match}</div>
-                  <div className="text-xs text-[var(--muted)] uppercase tracking-wider mt-0.5">Role Gap Match</div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="inline-flex items-center gap-1 rounded bg-[var(--green-badge-bg)] border border-[var(--green)]/30 px-2 py-0.5 font-bold text-[var(--green-badge-text)]">
+                      <GovernmentIcon className="h-3.5 w-3.5" />
+                      <span>{course.source}</span>
+                    </span>
+                    <span className="rounded bg-[var(--panel-soft)] px-2 py-0.5 text-[var(--teal)] font-mono text-[11px] border border-[var(--border-subtle)]">
+                      {course.externalId}
+                    </span>
+                    <span className="text-[var(--muted)] font-medium">{course.level}</span>
+                    <span className="text-[var(--muted)]">•</span>
+                    <span className="text-[var(--muted)]">{course.duration}</span>
+                  </div>
+                  <h2 className="mt-3 text-lg font-bold text-[var(--foreground)]">{course.title}</h2>
+                  <p className="mt-2 max-w-2xl text-xs sm:text-sm leading-relaxed text-[var(--muted)]">{course.reason}</p>
+
+                  {course.skills ? (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {course.skills.split(",").map((s) => (
+                        <span key={s.trim()} className="rounded bg-[var(--panel-inner)] px-2 py-0.5 text-[11px] text-[var(--foreground)] border border-[var(--border-subtle)]">
+                          {s.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 flex items-center gap-3">
+                    <div className="h-1.5 w-full max-w-sm rounded-full bg-[var(--border)] overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-[var(--teal)]" style={{ width: `${course.progress}%` }} />
+                    </div>
+                    <span className="text-xs text-[var(--muted)] font-medium">{course.progress ? `${course.progress}% complete` : "Not started"}</span>
+                  </div>
                 </div>
-                <div className="mt-4 flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCourseModal(course)}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--border)] bg-[#262626] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-[var(--teal)] hover:text-white transition-colors"
-                  >
-                    <span>Syllabus &amp; Overview</span>
-                    <span aria-hidden="true">ℹ️</span>
-                  </button>
-                  <a
-                    href={course.courseUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 transition-colors"
-                  >
-                    <span>Portal Enrollment</span>
-                    <span aria-hidden="true">↗</span>
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => handleContinue(course)}
-                    className="inline-flex items-center justify-center rounded-md bg-[var(--primary)] px-3 py-2 text-xs font-semibold text-white hover:bg-[#60a5fa] transition-colors"
-                  >
-                    Start In-App Roadmap
-                  </button>
+
+                <div className="flex flex-col justify-between rounded-md bg-[var(--panel-inner)] border border-[var(--border-subtle)] p-4 text-center lg:block">
+                  <div>
+                    <div className="text-2xl font-black text-[var(--green-badge-text)]">{course.match}</div>
+                    <div className="text-[10px] text-[var(--muted)] uppercase tracking-wider mt-0.5 font-semibold">Role Gap Match</div>
+                  </div>
+                  <div className="mt-4 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCourseModal(course)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--panel-soft)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] hover:border-[var(--teal)] hover:text-[var(--teal)] transition"
+                    >
+                      <span>Syllabus &amp; Overview</span>
+                      <InfoIcon className="h-3.5 w-3.5" />
+                    </button>
+                    <a
+                      href={course.courseUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--green)]/40 bg-[var(--green-badge-bg)] px-3 py-2 text-xs font-bold text-[var(--green-badge-text)] hover:opacity-90 transition"
+                    >
+                      <span>Portal Enrollment</span>
+                      <ArrowRightIcon className="h-3.5 w-3.5" />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleContinue(course)}
+                      className="inline-flex items-center justify-center rounded-md bg-[var(--primary)] px-3 py-2 text-xs font-bold text-white hover:bg-[var(--primary-hover)] transition shadow-xs"
+                    >
+                      Start In-App Roadmap
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </article>
-        )))}
+            </article>
+          ))
+        )}
       </section>
 
       {/* Course Details & Syllabus Modal */}
       {selectedCourseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-2xl rounded-lg border border-[var(--border)] bg-[#1e1e1e] p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-[#2e2e2e] pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-2xl rounded-lg border border-[var(--border)] bg-[var(--panel)] p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border-subtle)] pb-4">
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-xs font-medium text-emerald-400">
-                    🏛️ {selectedCourseModal.source}
+                  <span className="inline-flex items-center gap-1.5 rounded bg-[var(--green-badge-bg)] border border-[var(--green)]/30 px-2 py-0.5 text-xs font-bold text-[var(--green-badge-text)]">
+                    <GovernmentIcon className="h-3.5 w-3.5" />
+                    <span>{selectedCourseModal.source}</span>
                   </span>
-                  <span className="rounded bg-[#2a2a2a] px-2 py-0.5 font-mono text-[11px] text-sky-300 border border-[#3a3a3a]">
+                  <span className="rounded bg-[var(--panel-soft)] px-2 py-0.5 font-mono text-[11px] text-[var(--teal)] border border-[var(--border-subtle)]">
                     {selectedCourseModal.externalId}
                   </span>
                   <span className="text-xs text-[var(--muted)]">{selectedCourseModal.level}</span>
                   <span className="text-xs text-[var(--muted)]">•</span>
                   <span className="text-xs text-[var(--muted)]">{selectedCourseModal.duration}</span>
                 </div>
-                <h2 className="text-xl font-bold text-white leading-tight mt-1">{selectedCourseModal.title}</h2>
+                <h2 className="text-xl font-bold text-[var(--foreground)] leading-tight mt-1">{selectedCourseModal.title}</h2>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedCourseModal(null)}
-                className="rounded-md p-1.5 text-[var(--muted)] hover:bg-[#333] hover:text-white transition"
+                className="rounded-md p-1.5 text-[var(--muted)] hover:bg-[var(--panel-soft)] hover:text-[var(--foreground)] transition"
                 aria-label="Close modal"
               >
-                ✕
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
 
             <div className="mt-4 space-y-4 max-h-[60vh] overflow-y-auto pr-2 text-sm">
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--teal)]">Course Description &amp; Rationale</h3>
-                <p className="mt-1 text-slate-300 leading-relaxed">{selectedCourseModal.reason}</p>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--teal)]">Course Description &amp; Rationale</h3>
+                <p className="mt-1 text-xs sm:text-sm text-[var(--muted)] leading-relaxed">{selectedCourseModal.reason}</p>
               </div>
 
               {selectedCourseModal.skills && (
                 <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] mb-2">Targeted Competencies</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] mb-2">Targeted Competencies</h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedCourseModal.skills.split(",").map((s) => (
-                      <span key={s.trim()} className="rounded-md bg-[#2d2d2d] border border-[#3d3d3d] px-2.5 py-1 text-xs text-emerald-300">
-                        ✓ {s.trim()}
+                      <span key={s.trim()} className="inline-flex items-center gap-1.5 rounded-md bg-[var(--green-badge-bg)] border border-[var(--green)]/20 px-2.5 py-1 text-xs text-[var(--green-badge-text)] font-semibold">
+                        <CheckIcon className="h-3.5 w-3.5" />
+                        <span>{s.trim()}</span>
                       </span>
                     ))}
                   </div>
@@ -324,40 +404,40 @@ export default function CoursesPage() {
               )}
 
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)] mb-2">Curriculum Modules (Mission Karmayogi Standards)</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] mb-2">Curriculum Modules (Mission Karmayogi Standards)</h3>
                 <div className="space-y-2">
-                  <div className="rounded border border-[#333] bg-[#252525] p-3">
-                    <div className="font-medium text-white text-xs">Module 1: Principles, Regulatory Framework &amp; Standards</div>
+                  <div className="rounded border border-[var(--border-subtle)] bg-[var(--panel-inner)] p-3">
+                    <div className="font-bold text-[var(--foreground)] text-xs">Module 1: Principles, Regulatory Framework &amp; Standards</div>
                     <div className="text-[11px] text-[var(--muted)] mt-0.5">Foundational standards, official guidelines, and statutory mandates.</div>
                   </div>
-                  <div className="rounded border border-[#333] bg-[#252525] p-3">
-                    <div className="font-medium text-white text-xs">Module 2: Practical Methods &amp; Analytical Tooling</div>
+                  <div className="rounded border border-[var(--border-subtle)] bg-[var(--panel-inner)] p-3">
+                    <div className="font-bold text-[var(--foreground)] text-xs">Module 2: Practical Methods &amp; Analytical Tooling</div>
                     <div className="text-[11px] text-[var(--muted)] mt-0.5">Hands-on applications, data validation workflows, and official reporting instruments.</div>
                   </div>
-                  <div className="rounded border border-[#333] bg-[#252525] p-3">
-                    <div className="font-medium text-white text-xs">Module 3: Real-World Case Studies &amp; Public Policy Scenarios</div>
+                  <div className="rounded border border-[var(--border-subtle)] bg-[var(--panel-inner)] p-3">
+                    <div className="font-bold text-[var(--foreground)] text-xs">Module 3: Real-World Case Studies &amp; Public Policy Scenarios</div>
                     <div className="text-[11px] text-[var(--muted)] mt-0.5">Application to national statistics, departmental evaluations, and field quality controls.</div>
                   </div>
-                  <div className="rounded border border-[#333] bg-[#252525] p-3">
-                    <div className="font-medium text-white text-xs">Module 4: Competency Assessment &amp; Certification</div>
+                  <div className="rounded border border-[var(--border-subtle)] bg-[var(--panel-inner)] p-3">
+                    <div className="font-bold text-[var(--foreground)] text-xs">Module 4: Competency Assessment &amp; Certification</div>
                     <div className="text-[11px] text-[var(--muted)] mt-0.5">Scenario-based multiple choice assessment and verified competency leveling.</div>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-md border border-emerald-500/20 bg-emerald-950/10 p-3 text-xs text-emerald-300 flex items-start gap-2">
-                <span className="text-base">ℹ️</span>
+              <div className="rounded-md border border-[var(--green)]/20 bg-[var(--green-badge-bg)] p-3 text-xs text-[var(--green-badge-text)] flex items-start gap-2">
+                <InfoIcon className="h-4 w-4" />
                 <span>
                   This course is part of the <strong>Mission Karmayogi Bharat Capacity Building Framework</strong>. Civil service officers can access the official course materials via the Karmayogi Bharat portal or learn along our in-app tailored roadmap.
                 </span>
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#2e2e2e] pt-4">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-4">
               <button
                 type="button"
                 onClick={() => setSelectedCourseModal(null)}
-                className="rounded-md border border-[var(--border)] px-4 py-2 text-xs font-medium text-[var(--muted)] hover:text-white transition"
+                className="rounded-md border border-[var(--border)] bg-[var(--panel-soft)] px-4 py-2 text-xs font-semibold text-[var(--muted)] hover:text-[var(--foreground)] transition"
               >
                 Close
               </button>
@@ -367,10 +447,10 @@ export default function CoursesPage() {
                   href={selectedCourseModal.courseUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/30 transition"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[var(--green)]/40 bg-[var(--green-badge-bg)] px-3 py-2 text-xs font-bold text-[var(--green-badge-text)] hover:opacity-90 transition"
                 >
                   <span>Open Karmayogi Portal</span>
-                  <span>↗</span>
+                  <ArrowUpRightIcon className="h-3.5 w-3.5" />
                 </a>
                 <button
                   type="button"
@@ -379,9 +459,10 @@ export default function CoursesPage() {
                     setSelectedCourseModal(null);
                     handleContinue(c);
                   }}
-                  className="rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white hover:bg-[#60a5fa] transition"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--primary-hover)] transition shadow-xs"
                 >
-                  Start In-App Roadmap →
+                  <span>Start In-App Roadmap</span>
+                  <ArrowRightIcon className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>

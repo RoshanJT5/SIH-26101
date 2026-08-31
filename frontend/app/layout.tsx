@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "./components/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,17 +14,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Skill Intelligence Platform",
-  description: "AI-powered learning platform for government officials and statisticians.",
+  title: "StatLearn AI — National Statistical Competency & Intelligence Platform",
+  description: "AI-powered competency diagnosis, skill gap mapping, and accredited iGOT Karmayogi learning platform for India's Official Statistical System (MoSPI).",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full bg-[#0b0f14] text-slate-100">{children}</body>
+      <body className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

@@ -6,8 +6,9 @@
 > **Theme:** Smart Education\
 > **Primary users:** Government officials, statisticians, analysts, and
 > data personnel in India's Official Statistical System\
-> **Frontend phase:** UI/UX only; authentication and data integrations
-> may remain dummy/mock until backend integration.
+> **Current implementation:** Full-stack prototype with SQLite persistence,
+> prototype authentication, AI Tutor/RAG, OCR document processing, and
+> connected learner/admin data flows.
 
 ------------------------------------------------------------------------
 

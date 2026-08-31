@@ -12,11 +12,14 @@ __pycache__/
 *.pyo
 *.pyd
 .pytest_cache/
+.coverage
+htmlcov/
 .mypy_cache/
 .ruff_cache/
 
 # Local runtime data
 uploads/
+*.log
 *.db
 *.sqlite3
 *.sqlite

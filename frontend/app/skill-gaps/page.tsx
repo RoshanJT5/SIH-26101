@@ -3,47 +3,52 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "../components/app-shell";
+import { ArrowRightIcon, FileIcon, GovernmentIcon, MapIcon } from "../components/icons";
 import {
-  getCurrentUserId,
-  getUserSkillGaps,
-  getUserRecommendations,
-  getUserRoadmaps,
-  listDocuments,
-  RoadmapItem,
   DocumentResponse,
+  getCurrentUserId,
+  getUser,
+  getUserRecommendations,
+  getUserSkillGaps,
+  listDocuments,
+  listRoadmaps,
+  RoadmapResponse,
 } from "../../lib/api";
 
 type SkillItem = {
   skill: string;
+  category: string;
   current: number;
   target: number;
   gap: number;
   priority: string;
-  activeRoadmap?: {
-    id: number;
-    title: string;
-    progress_percentage: number;
-  };
-  groundedDocument?: {
-    id: number;
-    filename: string;
-  };
+  activeRoadmap?: RoadmapResponse;
+  groundedDocument?: DocumentResponse;
 };
 
-type RecommendedCourse = {
+type CourseItem = {
   externalId: string;
   title: string;
-  match: string;
   source: string;
+  match: string;
+  reason: string;
+  courseUrl: string;
 };
+
+const initialCategories = [
+  { name: "All Domains", count: 0 },
+  { name: "Statistics", count: 0 },
+  { name: "Data Science", count: 0 },
+  { name: "Survey Methods", count: 0 },
+  { name: "Visualization", count: 0 },
+  { name: "Governance", count: 0 },
+];
 
 export default function SkillGapsPage() {
   const [skills, setSkills] = useState<SkillItem[]>([]);
-  const [courses, setCourses] = useState<RecommendedCourse[]>([]);
-  const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
-  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("All Domains");
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState("All Competencies");
 
   useEffect(() => {
     let active = true;
@@ -51,108 +56,125 @@ export default function SkillGapsPage() {
     async function loadSkillData() {
       try {
         const userId = getCurrentUserId();
-        const [gapResponse, recommendationResponse, roadmapResponse, docResponse] = await Promise.all([
-          getUserSkillGaps(userId).catch(() => ({ user_id: userId, skill_gaps: [] })),
-          getUserRecommendations(userId).catch(() => []),
-          getUserRoadmaps(userId).catch(() => []),
-          listDocuments().catch(() => []),
-        ]);
+        const [userProfile, gapsResponse, recsResponse, roadmapsResponse, docsResponse] =
+          await Promise.all([
+            getUser(userId),
+            getUserSkillGaps(userId),
+            getUserRecommendations(userId),
+            listRoadmaps(userId),
+            listDocuments(),
+          ]);
 
         if (!active) return;
 
-        const rawGaps = gapResponse?.skill_gaps ?? [];
-        const rawRoadmaps = roadmapResponse ?? [];
-        const rawDocs = docResponse ?? [];
+        const profileComps = userProfile?.competencies || [];
+        const rawGaps = gapsResponse?.skill_gaps || [];
+        const activeRoadmaps = roadmapsResponse || [];
+        const activeDocs = docsResponse || [];
 
-        setRoadmaps(rawRoadmaps);
-        setDocuments(rawDocs);
+        // Build a dynamic map of all skills from profile + gaps + roadmaps
+        const skillMap = new Map<string, SkillItem>();
 
-        // Build quick lookup for roadmaps by competency name
-        const roadmapMap = new Map<string, RoadmapItem>();
-        for (const rm of rawRoadmaps) {
-          if (rm.target_competency) {
-            roadmapMap.set(rm.target_competency.trim().toLowerCase(), rm);
-          }
-        }
-
-        // Map skill items
-        const mappedSkills: SkillItem[] = rawGaps.map((gap) => {
-          const gapKey = gap.competency.trim().toLowerCase();
-          const activeRm = roadmapMap.get(gapKey);
-
-          // If active roadmap has progress, dynamically boost current level
-          let currentPct = Math.max(10, Math.min(100, Math.round((gap.current_level / Math.max(gap.required_level, 1)) * 100)));
-          if (activeRm && activeRm.progress_percentage > 0) {
-            // Give up to +20% boost based on roadmap completion
-            const roadmapBonus = Math.round((activeRm.progress_percentage / 100) * 20);
-            currentPct = Math.min(100, currentPct + roadmapBonus);
-          }
-
+        // Seed with profile competencies
+        profileComps.forEach((comp) => {
+          const req = Math.max(comp.required_level, 1);
+          const currentPct = Math.round((comp.current_level / req) * 100);
           const gapPct = Math.max(0, 100 - currentPct);
+          const priority =
+            gapPct > 30 ? "High priority" : gapPct > 10 ? "Moderate gap" : "On track";
 
-          // Find if an uploaded document relates to this competency
-          const matchedDoc = rawDocs.find(
-            (d) =>
-              d.filename.toLowerCase().includes(gapKey) ||
-              gapKey.split(" ").some((word) => word.length > 3 && d.filename.toLowerCase().includes(word))
-          );
-
-          return {
-            skill: gap.competency,
-            current: currentPct,
+          skillMap.set(comp.competency_name, {
+            skill: comp.competency_name,
+            category: comp.category || "Statistics",
+            current: Math.min(currentPct, 100),
             target: 100,
             gap: gapPct,
-            priority:
-              currentPct >= 90
-                ? "Meets target"
-                : gap.priority === "HIGH" || gap.priority === "CRITICAL"
-                  ? "High priority"
-                  : "Moderate gap",
-            activeRoadmap: activeRm
-              ? {
-                  id: activeRm.id,
-                  title: activeRm.title,
-                  progress_percentage: activeRm.progress_percentage,
-                }
-              : undefined,
-            groundedDocument: matchedDoc
-              ? {
-                  id: matchedDoc.id,
-                  filename: matchedDoc.filename,
-                }
-              : undefined,
-          };
+            priority,
+          });
         });
 
-        // Also incorporate any custom roadmaps that might not be in the initial core competency list
-        for (const rm of rawRoadmaps) {
-          const compName = rm.target_competency?.trim() || "";
-          if (compName && !mappedSkills.some((s) => s.skill.toLowerCase() === compName.toLowerCase())) {
-            const currentPct = Math.max(20, rm.progress_percentage);
-            mappedSkills.push({
-              skill: compName,
-              current: currentPct,
+        // Overlay with gaps response (priority level)
+        rawGaps.forEach((gap) => {
+          const req = Math.max(gap.required_level, 1);
+          const currentPct = Math.round((gap.current_level / req) * 100);
+          const gapPct = Math.max(0, 100 - currentPct);
+          const priority =
+            gap.priority === "HIGH" || gap.priority === "CRITICAL"
+              ? "High priority"
+              : gap.priority === "MEDIUM"
+                ? "Moderate gap"
+                : "On track";
+
+          const existing = skillMap.get(gap.competency);
+          if (existing) {
+            existing.current = Math.min(currentPct, 100);
+            existing.gap = gapPct;
+            existing.priority = priority;
+          } else {
+            skillMap.set(gap.competency, {
+              skill: gap.competency,
+              category: "General",
+              current: Math.min(currentPct, 100),
               target: 100,
-              gap: Math.max(0, 100 - currentPct),
-              priority: currentPct >= 80 ? "Meets target" : "Moderate gap",
-              activeRoadmap: {
-                id: rm.id,
-                title: rm.title,
-                progress_percentage: rm.progress_percentage,
-              },
+              gap: gapPct,
+              priority,
             });
           }
+        });
+
+        // Attach active roadmaps & grounded documents to each skill
+        skillMap.forEach((item, name) => {
+          const matchedRoadmap = activeRoadmaps.find((r) => {
+            const compName = (r.competency_name || r.target_competency || "").toLowerCase();
+            return compName === name.toLowerCase() || (compName !== "" && name.toLowerCase().includes(compName));
+          });
+          if (matchedRoadmap) {
+            item.activeRoadmap = matchedRoadmap;
+            // Bump proficiency dynamically based on roadmap progress
+            const roadmapBonus = Math.round(matchedRoadmap.progress_percentage * 0.4);
+            item.current = Math.min(100, item.current + roadmapBonus);
+            item.gap = Math.max(0, item.target - item.current);
+            if (item.gap <= 10) item.priority = "On track";
+            else if (item.gap <= 25) item.priority = "Moderate gap";
+          }
+
+          // Matched grounded uploaded document
+          const matchedDoc = activeDocs.find(
+            (d) =>
+              d.filename.toLowerCase().includes(name.toLowerCase()) ||
+              name.toLowerCase().includes(d.file_type.toLowerCase())
+          );
+          if (matchedDoc) {
+            item.groundedDocument = matchedDoc;
+          }
+        });
+
+        // Fallback default skills if map is empty
+        if (skillMap.size === 0) {
+          const defaults: SkillItem[] = [
+            { skill: "Data Visualization", category: "Visualization", current: 42, target: 80, gap: 38, priority: "High priority" },
+            { skill: "Statistical Inference", category: "Statistics", current: 82, target: 90, gap: 8, priority: "On track" },
+            { skill: "Survey Sampling Methodology", category: "Survey Methods", current: 73, target: 85, gap: 12, priority: "Moderate gap" },
+            { skill: "Python for Data Analysis", category: "Data Science", current: 55, target: 80, gap: 25, priority: "Moderate gap" },
+            { skill: "Official Statistics Standards", category: "Governance", current: 51, target: 75, gap: 24, priority: "Moderate gap" },
+            { skill: "Data Quality & Cleaning", category: "Data Science", current: 88, target: 90, gap: 2, priority: "On track" },
+          ];
+          defaults.forEach((d) => skillMap.set(d.skill, d));
         }
 
-        const mappedCourses: RecommendedCourse[] = (recommendationResponse ?? []).map((item) => ({
+        const formattedSkills = Array.from(skillMap.values()).sort((a, b) => b.gap - a.gap);
+
+        const formattedCourses = (recsResponse || []).map((item) => ({
           externalId: item.external_id || "IGOT",
           title: item.title,
-          match: `${Math.round(item.score * 100)}%`,
           source: item.source || "iGOT Karmayogi",
+          match: `${Math.round(item.score * 100)}%`,
+          reason: item.reason,
+          courseUrl: item.course_url || "https://portal.igotkarmayogi.gov.in",
         }));
 
-        setSkills(mappedSkills);
-        setCourses(mappedCourses);
+        setSkills(formattedSkills);
+        setCourses(formattedCourses);
       } catch {
         if (active) {
           setSkills([]);
@@ -169,54 +191,20 @@ export default function SkillGapsPage() {
     };
   }, []);
 
-  // Dynamically compute categories from actual data
-  const dynamicCategories: { name: string; count: number }[] = [
-    { name: "All Competencies", count: skills.length },
-  ];
+  // Compute dynamic category counts
+  const dynamicCategories = initialCategories.map((cat) => {
+    if (cat.name === "All Domains") return { ...cat, count: skills.length };
+    const matches = skills.filter(
+      (s) =>
+        s.category.toLowerCase().includes(cat.name.toLowerCase()) ||
+        s.skill.toLowerCase().includes(cat.name.toLowerCase())
+    );
+    return { ...cat, count: matches.length };
+  });
 
-  const activeRoadmapsCount = skills.filter((s) => s.activeRoadmap).length;
-  if (activeRoadmapsCount > 0 || roadmaps.length > 0) {
-    dynamicCategories.push({
-      name: "Active in Roadmaps",
-      count: activeRoadmapsCount,
-    });
-  }
-
-  const documentGroundedCount = skills.filter((s) => s.groundedDocument).length;
-  if (documentGroundedCount > 0 || documents.length > 0) {
-    dynamicCategories.push({
-      name: "Document Covered",
-      count: documentGroundedCount,
-    });
-  }
-
-  // Derive domain categories dynamically
-  const domainTags = [
-    { label: "Statistical Methods", filter: ["survey", "sampling", "price", "labour", "statistics", "national accounts"] },
-    { label: "Data & Programming", filter: ["python", "sql", "api", "database", "analytics", "r programming", "r "] },
-    { label: "Visualization & GIS", filter: ["visualization", "gis", "mapping", "dashboard"] },
-    { label: "Governance & Policy", filter: ["policy", "cybersecurity", "privacy", "leadership", "communication"] },
-  ];
-
-  for (const domain of domainTags) {
-    const count = skills.filter((s) =>
-      domain.filter.some((f) => s.skill.toLowerCase().includes(f))
-    ).length;
-    if (count > 0) {
-      dynamicCategories.push({ name: domain.label, count });
-    }
-  }
-
-  // Filter skills based on selected dynamic category
   const displayedSkills = skills.filter((item) => {
-    if (selectedCategory === "All Competencies") return true;
-    if (selectedCategory === "Active in Roadmaps") return !!item.activeRoadmap;
-    if (selectedCategory === "Document Covered") return !!item.groundedDocument;
-
-    const matchedDomain = domainTags.find((d) => d.label === selectedCategory);
-    if (matchedDomain) {
-      return matchedDomain.filter.some((f) => item.skill.toLowerCase().includes(f));
-    }
+    if (selectedCategory === "All Domains") return true;
+    if (item.category.toLowerCase().includes(selectedCategory.toLowerCase())) return true;
     return item.skill.toLowerCase().includes(selectedCategory.toLowerCase());
   });
 
@@ -233,9 +221,9 @@ export default function SkillGapsPage() {
     >
       <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
         {/* Dynamic Categories Sidebar */}
-        <aside className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-4">
+        <aside className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--card-shadow)]">
           <div className="flex items-center justify-between px-2">
-            <h2 className="text-sm font-semibold text-white">Dynamic Filters</h2>
+            <h2 className="text-sm font-bold text-[var(--foreground)]">Domain Filters</h2>
             <span className="text-[11px] text-[var(--muted)]">{skills.length} skills</span>
           </div>
 
@@ -246,8 +234,8 @@ export default function SkillGapsPage() {
                 onClick={() => setSelectedCategory(cat.name)}
                 className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs transition ${
                   selectedCategory === cat.name
-                    ? "bg-[rgba(32,196,183,0.15)] text-[var(--teal)] font-semibold border border-[var(--teal)]/30"
-                    : "text-[var(--muted)] hover:bg-[#303030] hover:text-white"
+                    ? "bg-[var(--primary-soft)] text-[var(--teal)] font-bold border border-[var(--teal)]/30"
+                    : "text-[var(--muted)] hover:bg-[var(--panel-soft)] hover:text-[var(--foreground)]"
                 }`}
               >
                 <span className="truncate">{cat.name}</span>
@@ -255,7 +243,7 @@ export default function SkillGapsPage() {
                   className={`ml-2 rounded-full px-2 py-0.5 text-[10px] ${
                     selectedCategory === cat.name
                       ? "bg-[var(--teal)] text-black font-bold"
-                      : "bg-[#333] text-slate-300"
+                      : "bg-[var(--panel-soft)] text-[var(--muted)] border border-[var(--border-subtle)]"
                   }`}
                 >
                   {cat.count}
@@ -264,47 +252,33 @@ export default function SkillGapsPage() {
             ))}
           </div>
 
-          {/* Document & Roadmap summary stats in sidebar */}
-          <div className="mt-6 border-t border-[var(--border)] pt-4 px-2 space-y-3 text-xs">
-            <div className="text-[var(--muted)] font-medium uppercase tracking-wider text-[10px]">
-              Training Integrations
+          <div className="mt-6 border-t border-[var(--border-subtle)] pt-4 px-2">
+            <div className="text-[11px] font-semibold text-[var(--muted)] uppercase tracking-wider">
+              Proficiency Benchmark
             </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="flex items-center gap-1.5">
-                <span>🗺️</span>
-                <span>Active Roadmaps</span>
-              </span>
-              <span className="font-semibold text-white">{roadmaps.length}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="flex items-center gap-1.5">
-                <span>📄</span>
-                <span>Uploaded Manuals</span>
-              </span>
-              <span className="font-semibold text-white">{documents.length}</span>
+            <div className="mt-2 text-xs text-[var(--muted)] leading-relaxed">
+              Mapped against official Ministry of Statistics &amp; Programme Implementation (MoSPI) cadre requirements.
             </div>
           </div>
         </aside>
 
-        {/* Competency Table */}
-        <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Competency Gap Table */}
+        <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold text-white">Dynamic Competency Map</h2>
-                <span className="rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[11px] text-emerald-400">
-                  Live Synced
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-[var(--muted)]">
+              <h2 className="text-lg font-bold text-[var(--foreground)]">
+                {selectedCategory} Competencies
+              </h2>
+              <p className="text-xs text-[var(--muted)] mt-0.5">
                 Proficiency scores automatically adapt as you complete roadmap day tasks and upload role manuals.
               </p>
             </div>
             <Link
               href="/courses"
-              className="rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white hover:bg-[#60a5fa] transition"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white hover:bg-[var(--primary-hover)] transition shadow-xs"
             >
-              Explore iGOT Courses →
+              <span>Explore iGOT Courses</span>
+              <ArrowRightIcon className="h-3.5 w-3.5" />
             </Link>
           </div>
 
@@ -335,22 +309,22 @@ export default function SkillGapsPage() {
                   </tr>
                 ) : (
                   displayedSkills.map((item) => (
-                    <tr key={item.skill} className="bg-[#303030] text-white">
+                    <tr key={item.skill} className="bg-[var(--panel-inner)] text-[var(--foreground)] border border-[var(--border-subtle)]">
                       <td className="rounded-l-md px-4 py-3.5">
-                        <div className="font-medium text-white">{item.skill}</div>
+                        <div className="font-semibold text-[var(--foreground)]">{item.skill}</div>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           {item.activeRoadmap && (
-                            <span className="inline-flex items-center gap-1 rounded bg-teal-950/80 border border-teal-500/30 px-2 py-0.5 text-[10px] text-teal-300">
-                              <span>🗺️</span>
+                            <span className="inline-flex items-center gap-1 rounded bg-[var(--green-badge-bg)] border border-[var(--green)]/30 px-2 py-0.5 text-[10px] text-[var(--green-badge-text)] font-semibold">
+                              <MapIcon className="h-3 w-3" />
                               <span>Roadmap: {item.activeRoadmap.progress_percentage}% done</span>
                             </span>
                           )}
                           {item.groundedDocument && (
                             <span
-                              className="inline-flex items-center gap-1 rounded bg-sky-950/70 border border-sky-500/30 px-2 py-0.5 text-[10px] text-sky-300 truncate max-w-[180px]"
+                              className="inline-flex items-center gap-1 rounded bg-[var(--primary-soft)] border border-[var(--primary)]/30 px-2 py-0.5 text-[10px] text-[var(--primary)] font-semibold truncate max-w-[180px]"
                               title={item.groundedDocument.filename}
                             >
-                              <span>📄</span>
+                              <FileIcon className="h-3 w-3" />
                               <span className="truncate">{item.groundedDocument.filename}</span>
                             </span>
                           )}
@@ -358,8 +332,8 @@ export default function SkillGapsPage() {
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <span className="w-9 tabular-nums text-xs font-semibold">{item.current}%</span>
-                          <div className="h-2 w-24 rounded-full bg-[#444444] overflow-hidden">
+                          <span className="w-9 tabular-nums text-xs font-semibold text-[var(--foreground)]">{item.current}%</span>
+                          <div className="h-2 w-24 rounded-full bg-[var(--border)] overflow-hidden">
                             <div
                               className="h-2 rounded-full bg-[var(--teal)] transition-all"
                               style={{ width: `${item.current}%` }}
@@ -370,19 +344,19 @@ export default function SkillGapsPage() {
                       <td className="px-4 py-3.5 tabular-nums text-xs text-[var(--muted)]">{item.target}%</td>
                       <td className="px-4 py-3.5 tabular-nums text-xs font-medium">
                         {item.gap > 0 ? (
-                          <span className="text-amber-300">-{item.gap}%</span>
+                          <span className="text-[var(--amber)] font-bold">-{item.gap}%</span>
                         ) : (
-                          <span className="text-emerald-400">0%</span>
+                          <span className="text-[var(--green)] font-bold">0%</span>
                         )}
                       </td>
                       <td className="px-4 py-3.5">
                         <span
-                          className={`rounded-md px-2 py-1 text-[11px] font-medium ${
+                          className={`rounded px-2 py-0.5 text-[10px] font-bold ${
                             item.priority === "High priority"
-                              ? "bg-[#3a2020] text-[#ff8f8f] border border-red-500/20"
+                              ? "bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]"
                               : item.priority === "Moderate gap"
-                                ? "bg-[#3a311d] text-[#ffd46b] border border-amber-500/20"
-                                : "bg-[#14331f] text-[#37d46f] border border-emerald-500/20"
+                                ? "bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]"
+                                : "bg-[var(--green-badge-bg)] text-[var(--green-badge-text)]"
                           }`}
                         >
                           {item.priority}
@@ -393,12 +367,12 @@ export default function SkillGapsPage() {
                           href={`/roadmap?competency=${encodeURIComponent(item.skill)}`}
                           className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
                             item.activeRoadmap
-                              ? "border border-teal-500/40 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20"
-                              : "border border-[var(--border)] bg-[#383838] text-white hover:border-[var(--teal)] hover:text-[var(--teal)]"
+                              ? "border border-[var(--teal)]/40 bg-[var(--primary-soft)] text-[var(--teal)] hover:opacity-90"
+                              : "border border-[var(--border)] bg-[var(--panel-soft)] text-[var(--foreground)] hover:border-[var(--teal)] hover:text-[var(--teal)]"
                           }`}
                         >
                           <span>{item.activeRoadmap ? "View Roadmap" : "+ Roadmap"}</span>
-                          <span>→</span>
+                          <ArrowRightIcon className="h-3.5 w-3.5" />
                         </Link>
                       </td>
                     </tr>
@@ -412,38 +386,39 @@ export default function SkillGapsPage() {
 
       {/* Highlights & Context Section */}
       <section className="mt-5 grid gap-5 lg:grid-cols-[1fr_1fr]">
-        <div className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
+        <div className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
           {highlightSkill ? (
             <>
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-rose-400">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--red)]">
                     Highest Priority Skill Gap
                   </span>
-                  <h2 className="text-xl font-semibold text-white mt-0.5">{highlightSkill.skill}</h2>
+                  <h2 className="text-xl font-bold text-[var(--foreground)] mt-0.5">{highlightSkill.skill}</h2>
                 </div>
                 <Link
                   href={`/roadmap?competency=${encodeURIComponent(highlightSkill.skill)}`}
-                  className="rounded-md bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-[var(--badge-red-bg)] border border-[var(--red)]/30 px-3 py-1.5 text-xs font-semibold text-[var(--badge-red-text)] hover:opacity-90 transition"
                 >
-                  Launch Focused Roadmap →
+                  <span>Launch Focused Roadmap</span>
+                  <ArrowRightIcon className="h-3.5 w-3.5" />
                 </Link>
               </div>
               <p className="mt-2 text-xs text-[var(--muted)]">
                 Identified based on your role benchmark vs. verified mastery from quizzes and training roadmaps.
               </p>
               <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-                <div className="rounded-md bg-[#303030] p-4">
-                  <div className="text-2xl font-semibold text-white">{highlightSkill.current}%</div>
+                <div className="rounded-md bg-[var(--panel-inner)] border border-[var(--border-subtle)] p-4">
+                  <div className="text-2xl font-bold text-[var(--foreground)]">{highlightSkill.current}%</div>
                   <div className="mt-1 text-xs text-[var(--muted)]">Current Level</div>
                 </div>
-                <div className="rounded-md bg-[#303030] p-4">
-                  <div className="text-2xl font-semibold text-white">{highlightSkill.target}%</div>
+                <div className="rounded-md bg-[var(--panel-inner)] border border-[var(--border-subtle)] p-4">
+                  <div className="text-2xl font-bold text-[var(--foreground)]">{highlightSkill.target}%</div>
                   <div className="mt-1 text-xs text-[var(--muted)]">Target Role Level</div>
                 </div>
-                <div className="rounded-md bg-[#3a2020] p-4">
-                  <div className="text-2xl font-semibold text-[#ff8f8f]">{highlightSkill.gap}%</div>
-                  <div className="mt-1 text-xs text-[#ffc0c0]">{highlightSkill.priority}</div>
+                <div className="rounded-md bg-[var(--badge-red-bg)] border border-[var(--red)]/20 p-4">
+                  <div className="text-2xl font-bold text-[var(--badge-red-text)]">{highlightSkill.gap}%</div>
+                  <div className="mt-1 text-xs text-[var(--badge-red-text)] font-semibold">{highlightSkill.priority}</div>
                 </div>
               </div>
             </>
@@ -454,11 +429,12 @@ export default function SkillGapsPage() {
           )}
         </div>
 
-        <div className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
+        <div className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Recommended iGOT Learning</h2>
-            <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 text-xs font-medium text-emerald-400">
-              🏛️ Official iGOT Karmayogi
+            <h2 className="text-xl font-bold text-[var(--foreground)]">Recommended iGOT Learning</h2>
+            <span className="inline-flex items-center gap-1.5 rounded bg-[var(--green-badge-bg)] border border-[var(--green)]/30 px-2.5 py-1 text-xs font-bold text-[var(--green-badge-text)]">
+              <GovernmentIcon className="h-3.5 w-3.5" />
+              <span>iGOT Karmayogi</span>
             </span>
           </div>
           <p className="mt-1 text-xs text-[var(--muted)]">
@@ -473,24 +449,24 @@ export default function SkillGapsPage() {
               courses.slice(0, 3).map((course) => (
                 <div
                   key={course.title}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md bg-[#303030] p-4"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md bg-[var(--panel-inner)] border border-[var(--border-subtle)] p-4"
                 >
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="rounded bg-[#202020] px-2 py-0.5 font-mono text-[11px] text-sky-300 border border-[#3a3a3a]">
+                      <span className="rounded bg-[var(--panel-soft)] px-2 py-0.5 font-mono text-[11px] text-[var(--teal)] border border-[var(--border-subtle)]">
                         {course.externalId}
                       </span>
-                      <span className="text-xs text-emerald-400 font-medium">{course.source || "iGOT Karmayogi"}</span>
+                      <span className="text-xs text-[var(--green)] font-medium">{course.source || "iGOT Karmayogi"}</span>
                     </div>
-                    <span className="text-sm font-semibold text-white">{course.title}</span>
+                    <span className="text-sm font-semibold text-[var(--foreground)]">{course.title}</span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="rounded-md bg-[#14331f] px-2.5 py-1 text-xs font-medium text-[#37d46f]">
+                    <span className="rounded bg-[var(--green-badge-bg)] px-2.5 py-1 text-xs font-bold text-[var(--green-badge-text)]">
                       {course.match} match
                     </span>
                     <Link
                       href="/courses"
-                      className="rounded-md bg-[var(--primary)] px-3 py-1 text-xs font-semibold text-white hover:bg-[#60a5fa] transition-colors"
+                      className="rounded-md bg-[var(--primary)] px-3 py-1 text-xs font-semibold text-white hover:bg-[var(--primary-hover)] transition shadow-xs"
                     >
                       View
                     </Link>

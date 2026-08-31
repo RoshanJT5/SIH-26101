@@ -23,6 +23,9 @@ class UserCompetencyResponse(UserCompetencyBase):
 class UserBase(BaseModel):
     name: str
     email: EmailStr
+    mobile: Optional[str] = None
+    employee_id: Optional[str] = None
+    organization: Optional[str] = None
     department: Optional[str] = None
     designation: Optional[str] = None
     job_role: Optional[str] = None
@@ -31,21 +34,40 @@ class UserBase(BaseModel):
     career_goal: Optional[str] = None
 
 class UserCreate(UserBase):
-    pass
+    password: Optional[str] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
+    mobile: Optional[str] = None
+    employee_id: Optional[str] = None
+    organization: Optional[str] = None
     department: Optional[str] = None
     designation: Optional[str] = None
     job_role: Optional[str] = None
     experience_years: Optional[int] = None
     education: Optional[str] = None
     career_goal: Optional[str] = None
+    password: Optional[str] = None
 
 class UserResponse(UserBase):
     id: int
     competencies: List[UserCompetencyResponse] = []
+
+    class Config:
+        from_attributes = True
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class AuthUserResponse(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+    department: Optional[str] = None
+    designation: Optional[str] = None
+    job_role: Optional[str] = None
 
     class Config:
         from_attributes = True

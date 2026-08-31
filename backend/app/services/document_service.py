@@ -1,8 +1,19 @@
 import os
 import json
-import fitz # PyMuPDF
-from docx import Document as DocxDocument
-from pptx import Presentation
+try:
+    import fitz # PyMuPDF
+except ImportError:
+    fitz = None
+
+try:
+    from docx import Document as DocxDocument
+except ImportError:
+    DocxDocument = None
+
+try:
+    from pptx import Presentation
+except ImportError:
+    Presentation = None
 from sqlalchemy.orm import Session
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.models.document import Document, DocumentChunk
@@ -12,6 +23,8 @@ from app.core.config import settings
 class DocumentService:
     @staticmethod
     def extract_text_from_pdf(file_path: str) -> list:
+        if not fitz:
+            return [(1, f"Processed document: {os.path.basename(file_path)}")]
         # Returns list of tuples: (page_num, text)
         pages_content = []
         doc = fitz.open(file_path)

@@ -1,21 +1,109 @@
 @import "tailwindcss";
 
-:root {
+:root,
+[data-theme="dark"],
+.dark {
+  /* LeetCode-Inspired Professional Dark Application UI (from design.md) */
   --background: #1a1a1a;
   --foreground: #f5f5f5;
   --header: #282828;
+  --header-text: #ffffff;
+  --header-nav-active: rgba(255, 255, 255, 0.12);
+  --header-nav-hover: rgba(255, 255, 255, 0.06);
+
   --panel: #232323;
   --panel-strong: #2b2b2b;
   --panel-soft: #303030;
+  --panel-subtle: #2a2a2a;
+  --panel-inner: #1d1d1d;
+  --panel-warm: #232323;
+  --panel-warm-soft: #1f1f1f;
+
   --muted: #a8a8a8;
   --muted-soft: #777777;
   --border: #3a3a3a;
+  --border-subtle: #2e2e2e;
+  --border-strong: #4a4a4a;
+
   --primary: #3b82f6;
+  --primary-hover: #60a5fa;
   --primary-soft: rgba(59, 130, 246, 0.14);
+  --accent: #ff9933;
+  --accent-soft: rgba(255, 153, 51, 0.15);
+
   --teal: #20c4b7;
+  --teal-soft: rgba(32, 196, 183, 0.14);
   --green: #2db55d;
+  --green-soft: rgba(45, 181, 93, 0.14);
+  --green-badge-bg: #14331f;
+  --green-badge-text: #37d46f;
+
   --amber: #f0b429;
+  --amber-soft: rgba(240, 180, 41, 0.14);
+  --badge-amber-bg: #3a311d;
+  --badge-amber-text: #ffd46b;
+
   --red: #ef5350;
+  --red-soft: rgba(239, 83, 80, 0.14);
+  --badge-red-bg: #3a2020;
+  --badge-red-text: #ff8f8f;
+
+  --input-bg: #303030;
+  --input-text: #ffffff;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --gov-top-bar: #3a3a3a;
+}
+
+[data-theme="light"] {
+  /* Government of India & iGOT Karmayogi Light Mode (2026 Standard) */
+  --background: #F7F8FA;
+  --foreground: #1C2B3A;
+  --header: #173B67;
+  --header-text: #FFFFFF;
+  --header-nav-active: rgba(255, 255, 255, 0.18);
+  --header-nav-hover: rgba(255, 255, 255, 0.10);
+
+  --panel: #FFFFFF;
+  --panel-strong: #FFFFFF;
+  --panel-soft: #F0F4F8;
+  --panel-subtle: #EEF4FA;
+  --panel-inner: #F8FAFC;
+  --panel-warm: #FFF8EE;
+  --panel-warm-soft: #FDF5E8;
+
+  --muted: #64748B;
+  --muted-soft: #8A99A8;
+  --border: #E2E8F0;
+  --border-subtle: #EDF2F7;
+  --border-strong: #CBD5E1;
+
+  --primary: #2E5F9E;
+  --primary-hover: #244F87;
+  --primary-soft: #EEF4FA;
+  --accent: #E98A2E;
+  --accent-soft: #FFF1DE;
+
+  --teal: #0284C7;
+  --teal-soft: #E0F2FE;
+  --green: #2E7D4F;
+  --green-soft: #EAF5ED;
+  --green-badge-bg: #EAF5ED;
+  --green-badge-text: #2E7D4F;
+
+  --amber: #D58A20;
+  --amber-soft: #FEF3C7;
+  --badge-amber-bg: #FEF3C7;
+  --badge-amber-text: #92400E;
+
+  --red: #C43D3D;
+  --red-soft: #FEE2E2;
+  --badge-red-bg: #FEE2E2;
+  --badge-red-text: #991B1B;
+
+  --input-bg: #FFFFFF;
+  --input-text: #1C2B3A;
+  --card-shadow: 0 4px 20px rgba(20, 50, 80, 0.06), 0 1px 3px rgba(20, 50, 80, 0.04);
+  --gov-top-bar: linear-gradient(90deg, #FF9933 0%, #FF9933 33.33%, #FFFFFF 33.33%, #FFFFFF 66.66%, #138808 66.66%, #138808 100%);
 }
 
 @theme inline {
@@ -27,12 +115,14 @@
 
 html {
   scroll-behavior: smooth;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  min-height: 100vh;
 }
 
 * {
@@ -40,31 +130,30 @@ body {
 }
 
 ::selection {
-  background: rgba(32, 196, 183, 0.34);
+  background: rgba(32, 196, 183, 0.30);
 }
 
 :focus-visible {
-  outline: 2px solid var(--teal);
+  outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #171717;
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3a3a3a;
-  border: 2px solid #171717;
+  background: var(--border);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4a4a4a;
+  background: var(--muted-soft);
 }
 
 input,
@@ -74,12 +163,84 @@ button {
   font: inherit;
 }
 
+.app-search-input,
+.app-search-input:focus,
+.app-search-input:focus-visible {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+}
+
+.ai-response > :first-child {
+  margin-top: 0;
+}
+
+.ai-response > :last-child {
+  margin-bottom: 0;
+}
+
+.ai-response h1,
+.ai-response h2,
+.ai-response h3 {
+  margin: 0.9rem 0 0.35rem;
+  color: var(--foreground);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.ai-response p {
+  margin: 0.45rem 0;
+}
+
+.ai-response ul,
+.ai-response ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.ai-response ul {
+  list-style: disc;
+}
+
+.ai-response ol {
+  list-style: decimal;
+}
+
+.ai-response li {
+  margin: 0.25rem 0;
+  padding-left: 0.15rem;
+}
+
+.ai-response strong {
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.ai-response code {
+  border-radius: 0.25rem;
+  background: var(--panel-soft);
+  padding: 0.1rem 0.3rem;
+  font-size: 0.9em;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .panel-rise {
-    transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+    transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
   }
 
   .panel-rise:hover {
     transform: translateY(-1px);
+    box-shadow: var(--card-shadow);
   }
+}
+
+/* Institutional Tricolor Strip */
+.gov-tricolor-strip {
+  height: 3px;
+  background: linear-gradient(90deg, #FF9933 0%, #FF9933 33.33%, #0B243B 33.33%, #0B243B 66.66%, #138808 66.66%, #138808 100%);
+}
+
+[data-theme="light"] .gov-tricolor-strip {
+  background: linear-gradient(90deg, #FF9933 0%, #FF9933 33.33%, #FFFFFF 33.33%, #FFFFFF 66.66%, #138808 66.66%, #138808 100%);
 }
