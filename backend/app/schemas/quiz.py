@@ -1,52 +1,59 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
-import json
-
-class QuizGenerateRequest(BaseModel):
-    document_id: Optional[int] = None
-    topic: Optional[str] = None
-    number_of_questions: Optional[int] = 5
-    difficulty: Optional[str] = "medium" # easy, medium, hard
 
 class QuestionResponse(BaseModel):
     id: int
     question_text: str
     options: List[str]
+    competency_id: Optional[int] = None
+    competency_name: Optional[str] = None
     topic: Optional[str] = None
-    difficulty: Optional[str] = None
+    difficulty: Optional[str] = "medium"
     source_reference: Optional[str] = None
-
-    @field_validator('options', mode='before')
-    @classmethod
-    def parse_options(cls, v: Any) -> Any:
-        if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except Exception:
-                return [v]
-        return v
 
     class Config:
         from_attributes = True
 
 class QuizResponse(BaseModel):
     id: int
-    document_id: Optional[int] = None
     topic: Optional[str] = None
-    difficulty: Optional[str] = None
+    difficulty: Optional[str] = "medium"
+    quiz_type: Optional[str] = "DIAGNOSTIC"
+    number_of_questions: int
+    document_id: Optional[int] = None
     questions: List[QuestionResponse]
 
     class Config:
         from_attributes = True
 
+class QuizGenerateRequest(BaseModel):
+    document_id: Optional[int] = None
+    competency_id: Optional[int] = None
+    topic: Optional[str] = "Official Statistics"
+    number_of_questions: Optional[int] = 5
+    difficulty: Optional[str] = "medium"
+    quiz_type: Optional[str] = "DIAGNOSTIC"
+
 class QuizSubmitRequest(BaseModel):
-    # Mapping of question_id to selected option text (or index / letter if needed)
-    answers: Dict[str, str]
+    answers: Dict[str, str] # Map of question_id (as str) -> chosen option string
+
+class CompetencyScoreDetail(BaseModel):
+    competency_id: Optional[int] = None
+    competency_name: str
+    total_questions: int
+    correct_answers: int
+    percentage: float
+    previous_level: int
+    new_level: int
+    level_changed: bool
+    status: str # "MASTERY", "PROFICIENT", "NEEDS_IMPROVEMENT"
 
 class QuizSubmitResponse(BaseModel):
-    score: float # Percentage
+    score: float
     total_questions: int
     correct_answers: int
     feedback: str
-    correct_details: Dict[str, Dict[str, str]] # question_id -> {"correct": "...", "explanation": "..."}
+    correct_details: Dict[str, Any]
     result_id: int
+    competency_breakdown: List[CompetencyScoreDetail] = []
+    level_upgrades: List[str] = [] # e.g. ["Sampling upgraded from Level 2 to Level 3 (+1)"]

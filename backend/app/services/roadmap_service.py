@@ -3,9 +3,11 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from app.models.progress import Roadmap, RoadmapTask
 from app.models.user import User
+from app.models.quiz import QuizResult, Question
+from app.models.competency import Competency
 from app.ai.llm import get_llm
 from app.schemas.roadmap import RoadmapGenerateRequest, TaskStatusUpdate
-from app.models.quiz import QuizResult, Question
+from typing import List, Dict, Any
 
 class RoadmapService:
     @staticmethod
@@ -14,27 +16,30 @@ class RoadmapService:
         if not user:
             return None
 
-        title = f"{req.target_competency} Mastery Roadmap"
+        title = f"{req.target_competency} Capacity Building Roadmap"
         
-        # Call Groq to generate structured day-by-day plan
+        # Call Groq to generate structured competency roadmap
         prompt = f"""
-You are an expert tutor. Create a highly structured, day-by-day study roadmap for a learner aiming to master: {req.target_competency}.
-The study plan must be exactly {req.number_of_days} days long.
+You are an expert curriculum director in India's Official Statistical System.
+Create a structured, day-by-day competency building roadmap for a statistical official aiming to master: {req.target_competency}.
+Target duration: exactly {req.number_of_days} days.
 
-For each day, provide a concrete 'task_title' and a detailed 'task_description' instructing the user what specific sub-topics to study or practice.
+For each day, provide:
+- 'task_title': Clear title of the learning milestone.
+- 'task_description': Detailed actionable study plan referencing standard statistical operating procedures or iGOT/NSSTA curriculum concepts.
 
 You MUST respond with a valid JSON object matching this schema:
 {{
   "tasks": [
     {{
       "day_number": 1,
-      "task_title": "Introduction and Setup",
-      "task_description": "Install Python, configure VS Code, and write your first Hello World script."
+      "task_title": "Foundational Principles and Standard Definitions",
+      "task_description": "Review official definitions, metadata standards, and conceptual framework for {req.target_competency}."
     }},
     {{
       "day_number": 2,
-      "task_title": "Variables and Data Types",
-      "task_description": "Study integers, floats, strings, booleans, and perform basic operations."
+      "task_title": "Methodological Operations and Case Studies",
+      "task_description": "Study operational guidelines, estimation formulas, and complete practice exercises."
     }}
   ]
 }}
@@ -48,7 +53,6 @@ Return only the JSON string. Do not wrap in markdown code blocks.
             response = llm.invoke(prompt)
             content = response.content.strip()
             
-            # Clean possible markdown wrap
             if content.startswith("```"):
                 lines = content.splitlines()
                 if lines[0].startswith("```json") or lines[0].startswith("```"):
@@ -56,13 +60,12 @@ Return only the JSON string. Do not wrap in markdown code blocks.
                     
             roadmap_data = json.loads(content)
             tasks_list = roadmap_data.get("tasks", [])
-        except Exception as e:
-            # Fallback mock generator
+        except Exception:
             tasks_list = [
                 {
                     "day_number": i + 1,
-                    "task_title": f"Intro to {req.target_competency} - Part {i + 1}",
-                    "task_description": f"Learn key fundamentals and core definitions of {req.target_competency}."
+                    "task_title": f"Milestone {i + 1}: {req.target_competency} Core Applications",
+                    "task_description": f"Complete prescribed module on {req.target_competency}, examine administrative case studies, and complete self-check exercises."
                 } for i in range(req.number_of_days)
             ]
 
@@ -94,7 +97,7 @@ Return only the JSON string. Do not wrap in markdown code blocks.
 
     @staticmethod
     def get_user_roadmaps(db: Session, user_id: int) -> list:
-        return db.query(Roadmap).filter(Roadmap.user_id == user_id).all()
+        return db.query(Roadmap).filter(Roadmap.user_id == user_id).order_by(Roadmap.id.desc()).all()
 
     @staticmethod
     def toggle_task(db: Session, task_id: int, update: TaskStatusUpdate) -> RoadmapTask:
@@ -135,34 +138,29 @@ Return only the JSON string. Do not wrap in markdown code blocks.
 
         failed_details = []
         for q in failed_questions:
+            comp_name = q.competency.name if q.competency else q.topic
             failed_details.append(
-                f"Question: {q.question_text}\nTopic: {q.topic}\nExplanation: {q.explanation}"
+                f"Topic: {comp_name}\nQuestion: {q.question_text}\nCorrect Concept: {q.correct_answer}\nExplanation: {q.explanation}"
             )
 
         context = "\n---\n".join(failed_details)
-        title = "Personalized Remediation Roadmap"
+        title = f"Remediation Plan: Diagnostic Gap Resolution"
         
         prompt = f"""
-You are an expert personal tutor. The student recently took a quiz and got the following questions wrong.
-Create a personalized remediation study plan of exactly {number_of_days} days to help them master these specific topics and correct their misunderstandings.
+You are an expert tutor in India's Official Statistical System.
+The official took a competency diagnostic assessment and struggled with these specific concepts:
 
-Wrong Questions & Concepts:
 {context}
 
-For each day, provide a concrete 'task_title' and a detailed 'task_description' explaining what concept to review.
+Create a focused {number_of_days}-day remediation study plan to eliminate these exact misunderstandings and reinforce required statistical principles.
 
 You MUST respond with a valid JSON object matching this schema:
 {{
   "tasks": [
     {{
       "day_number": 1,
-      "task_title": "Review Concept A",
-      "task_description": "Study variables and why they differ..."
-    }},
-    {{
-      "day_number": 2,
-      "task_title": "Review Concept B",
-      "task_description": "Practice condition loops..."
+      "task_title": "Clarify Core Statistical Misconceptions",
+      "task_description": "Review specific operational formulas and standard guidelines where errors occurred."
     }}
   ]
 }}
@@ -176,7 +174,6 @@ Return only the JSON string. Do not wrap in markdown code blocks.
             response = llm.invoke(prompt)
             content = response.content.strip()
             
-            # Clean possible markdown wrap
             if content.startswith("```"):
                 lines = content.splitlines()
                 if lines[0].startswith("```json") or lines[0].startswith("```"):
@@ -185,27 +182,24 @@ Return only the JSON string. Do not wrap in markdown code blocks.
             roadmap_data = json.loads(content)
             tasks_list = roadmap_data.get("tasks", [])
         except Exception:
-            # Fallback
             tasks_list = [
                 {
                     "day_number": i + 1,
-                    "task_title": f"Review Concepts - Part {i + 1}",
-                    "task_description": f"Go through the quiz explanations and practice questions related to the wrong answers."
+                    "task_title": f"Targeted Review: Module {i + 1}",
+                    "task_description": "Review diagnostic explanations for missed questions and practice related statistical problem sets."
                 } for i in range(number_of_days)
             ]
 
-        # Save Roadmap
         db_roadmap = Roadmap(
             user_id=result.user_id,
             title=title,
-            target_competency="Remediation for Quiz",
+            target_competency="Remediation for Identified Gaps",
             progress_percentage=0
         )
         db.add(db_roadmap)
         db.commit()
         db.refresh(db_roadmap)
 
-        # Save Tasks
         for t in tasks_list:
             db_task = RoadmapTask(
                 roadmap_id=db_roadmap.id,
@@ -219,4 +213,3 @@ Return only the JSON string. Do not wrap in markdown code blocks.
         db.commit()
         db.refresh(db_roadmap)
         return db_roadmap
-

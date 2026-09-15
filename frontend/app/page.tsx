@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { ArrowRightIcon, CheckIcon, GovernmentIcon, TrendingUpIcon, UsersIcon, BookOpenIcon } from "./components/icons";
 import { ThemeToggle } from "./components/theme-toggle";
@@ -47,9 +48,12 @@ export default function Home() {
   const [sessionName, setSessionName] = useState("");
 
   useEffect(() => {
-    const session = getAuthSession();
-    setSessionName(session?.user.name || "");
-    setAuthReady(true);
+    const frame = window.requestAnimationFrame(() => {
+      const session = getAuthSession();
+      setSessionName(session?.user.name || "");
+      setAuthReady(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   const avatarLetter = sessionName.trim().charAt(0).toUpperCase() || "O";
@@ -64,12 +68,18 @@ export default function Home() {
         <div className="mx-auto flex min-h-16 max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6">
           {/* Brand */}
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-md border border-[var(--border)] bg-[var(--panel-inner)] text-sm font-bold text-[var(--teal)]">
-              SL
+            <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white bg-white">
+              <Image
+                src="/pragati-parikshan-logo.jpeg"
+                alt="PragatiParikshan"
+                width={40}
+                height={40}
+                className="h-full w-full object-contain"
+              />
             </span>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="text-base font-bold tracking-tight text-white">StatLearn AI</span>
+                <span className="text-base font-bold tracking-tight text-white">PragatiParikshan</span>
                 <span className="rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
                   MoSPI • SIH &apos;26
                 </span>
@@ -449,7 +459,7 @@ export default function Home() {
         <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between text-xs text-[var(--muted)]">
             <div>
-              <div className="text-sm font-bold text-white">StatLearn AI — National Statistical Intelligence Platform</div>
+              <div className="text-sm font-bold text-white">PragatiParikshan — National Statistical Intelligence Platform</div>
               <p className="mt-1 text-slate-400">Developed for Ministry of Statistics and Programme Implementation (MoSPI) • SIH 2026</p>
             </div>
             <div className="flex flex-wrap gap-4 text-xs font-medium">

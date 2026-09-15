@@ -1,20 +1,75 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { clearAuthSession, getAuthSession, getCurrentUserId, getUser, UserProfile } from "../../lib/api";
-import { BellIcon, SearchIcon } from "./icons";
+import {
+  clearAuthSession,
+  getAuthSession,
+  getCurrentUserId,
+  setCurrentUserId,
+  fetchUserProfile,
+  UserProfile,
+} from "../../lib/api";
+import {
+  BellIcon,
+  SearchIcon,
+  DashboardIcon,
+  TargetIcon,
+  GraduationCapIcon,
+  MapIcon,
+  ClipboardIcon,
+  RobotIcon,
+  FileIcon,
+  UserIcon,
+  LogOutIcon,
+  MenuIcon,
+  XIcon,
+} from "./icons";
 import { ThemeToggle } from "./theme-toggle";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/skill-gaps", label: "Skill Map" },
-  { href: "/courses", label: "Learn" },
-  { href: "/assessments", label: "Assessments" },
-  { href: "/roadmap", label: "Roadmap" },
-  { href: "/documents", label: "Documents" },
-  { href: "/ai-tutor", label: "AI Lab" },
+interface NavGroup {
+  groupName: string;
+  items: {
+    href: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    groupName: "MAIN",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
+      { href: "/skill-gaps", label: "Skill Gaps", icon: TargetIcon },
+      { href: "/courses", label: "Courses & iGOT", icon: GraduationCapIcon },
+      { href: "/roadmap", label: "Learning Roadmap", icon: MapIcon },
+      { href: "/assessments", label: "Assessments", icon: ClipboardIcon },
+    ],
+  },
+  {
+    groupName: "AI ASSISTANCE",
+    items: [
+      { href: "/ai-tutor", label: "AI Tutor", icon: RobotIcon },
+      { href: "/documents", label: "Official Manuals", icon: FileIcon },
+    ],
+  },
+  {
+    groupName: "ACCOUNT",
+    items: [
+      { href: "/profile", label: "Official Profile", icon: UserIcon },
+    ],
+  },
+];
+
+const DEMO_PERSONAS = [
+  { id: 1, name: "Aditya Sharma", role: "Statistical Officer (Survey Design)" },
+  { id: 2, name: "Priya Sharma", role: "Junior Statistical Officer (PLFS Analytics)" },
+  { id: 3, name: "Dr. Amitabh Verma", role: "Deputy Director (National Accounts)" },
+  { id: 4, name: "Sunita Roy", role: "Senior Field Enumeration Supervisor" },
+  { id: 5, name: "Rajesh Nair", role: "Data Systems & Privacy Analyst" },
 ];
 
 export function AppShell({
@@ -30,7 +85,8 @@ export function AppShell({
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [skills, setSkills] = useState<{ label: string; value: string }[]>([]);
+  const [currentId, setCurrentId] = useState<number>(1);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -38,8 +94,8 @@ export function AppShell({
       router.replace("/login");
       return;
     }
-
     setAuthChecked(true);
+    setCurrentId(getCurrentUserId());
   }, [router]);
 
   useEffect(() => {
@@ -49,19 +105,9 @@ export function AppShell({
     async function loadUser() {
       try {
         const userId = getCurrentUserId();
-        const data = await getUser(userId);
+        const data = await fetchUserProfile(userId);
         if (!active) return;
         setProfile(data);
-
-        if (data.competencies?.length) {
-          const mapped = data.competencies.slice(0, 5).map((comp) => ({
-            label: comp.competency_name,
-            value: `${Math.round((comp.current_level / Math.max(comp.required_level, 1)) * 100)}%`,
-          }));
-          setSkills(mapped);
-        } else {
-          setSkills([]);
-        }
       } catch {
         // preserve fallback
       }
@@ -71,200 +117,360 @@ export function AppShell({
     return () => {
       active = false;
     };
-  }, [authChecked]);
+  }, [authChecked, currentId]);
+
+  const handlePersonaSwitch = async (newId: number) => {
+    setCurrentUserId(newId);
+    setCurrentId(newId);
+    try {
+      const data = await fetchUserProfile(newId);
+      setProfile(data);
+    } catch {}
+    window.location.reload();
+  };
 
   const displayName = profile?.name || "Official";
-  const displayRole = profile?.designation || profile?.job_role || "Civil Services";
+  const displayRole = profile?.role_name || profile?.designation || "Statistical Officer";
+  const displayOrg = profile?.organization_name || profile?.organization || "Ministry of Statistics & PI";
   const avatarLetter = displayName.trim().charAt(0).toUpperCase() || "O";
-
-  const overallAvg =
-    profile?.competencies && profile.competencies.length > 0
-      ? Math.round(
-          (profile.competencies.reduce((acc, c) => acc + c.current_level / Math.max(c.required_level, 1), 0) /
-            profile.competencies.length) *
-            100
-        )
-      : 82;
 
   if (!authChecked) {
     return <div className="min-h-[100dvh] bg-[var(--background)]" aria-busy="true" />;
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-200">
+    <div className="min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-200 flex flex-col">
       {/* Subtle National Accent Strip */}
-      <div className="gov-tricolor-strip w-full" aria-hidden="true" />
+      <div className="gov-tricolor-strip w-full h-1" aria-hidden="true" />
 
-      {/* Top Header / Navigation Bar */}
-      <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--header)] text-[var(--header-text)]">
-        <div className="mx-auto flex min-h-16 w-full max-w-[1440px] items-center gap-4 px-4 sm:px-6">
-          {/* Logo */}
-          <Link href="/" className="flex shrink-0 items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-md border border-[var(--border)] bg-[var(--panel-inner)] text-sm font-bold text-[var(--teal)]">
-              SL
-            </span>
-            <span className="hidden text-base font-semibold tracking-tight text-white sm:block">StatLearn AI</span>
-          </Link>
+      {/* TOP HEADER */}
+      <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--header)] text-[var(--header-text)] shadow-xs">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-15 gap-4">
+            
+            {/* LEFT: Mobile menu button + Logo & Platform Identity */}
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="xl:hidden w-8 h-8 rounded-md bg-white/10 hover:bg-white/15 text-white flex items-center justify-center transition"
+                aria-label="Toggle Navigation Menu"
+              >
+                {mobileMenuOpen ? <XIcon className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+              </button>
 
-          {/* Navigation Links */}
-          <nav className="hidden flex-1 items-center gap-1 lg:flex" aria-label="Main Navigation">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                    isActive
-                      ? "bg-[var(--header-nav-active)] text-white font-semibold"
-                      : "text-[var(--muted)] hover:bg-[var(--header-nav-hover)] hover:text-white"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+              <Link href="/dashboard" className="flex items-center gap-2.5 group">
+                <div className="w-9 h-9 rounded-lg overflow-hidden border border-white/20 flex items-center justify-center bg-white shadow-xs">
+                  <Image
+                    src="/pragati-parikshan-logo.jpeg"
+                    alt="PragatiParikshan Logo"
+                    width={36}
+                    height={36}
+                    className="w-full h-full object-contain"
+                    priority
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-base text-white tracking-tight leading-none">
+                      PragatiParikshan
+                    </span>
+                    <span className="hidden sm:inline-block text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-white/10 text-emerald-300 font-semibold border border-white/10">
+                      MoSPI SIH26101
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 hidden md:block mt-0.5">
+                    India&apos;s Official Statistical System • Capacity Engine
+                  </p>
+                </div>
+              </Link>
+            </div>
 
-          {/* Right Header Actions */}
-          <div className="ml-auto flex items-center gap-3">
-            <label className="hidden h-12 w-[280px] items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--panel-soft)] px-3 text-sm text-[var(--muted)] transition-colors focus-within:border-[var(--teal)] focus-within:bg-[var(--panel)] focus-within:ring-2 focus-within:ring-[var(--teal)]/20 md:flex">
-              <SearchIcon className="h-5 w-5 shrink-0 text-[var(--teal)]" />
-              <input
-                aria-label="Search courses, skills, assessments, and documents"
-                className="app-search-input min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--foreground)] placeholder:text-[var(--muted)]"
-                placeholder="Search learning content"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && searchQuery.trim()) {
-                    router.push(`/courses?q=${encodeURIComponent(searchQuery.trim())}`);
-                  }
-                }}
-              />
-            </label>
+            {/* CENTER: Contextual Search Bar */}
+            <div className="hidden md:flex flex-1 max-w-md items-center mx-4">
+              <div className="relative w-full">
+                <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search competencies, manuals, iGOT courses..."
+                  className="w-full h-9 pl-9 pr-3 rounded-md bg-white/10 border border-white/15 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:border-white/40 transition"
+                />
+              </div>
+            </div>
 
-            {/* HYDRATION-SAFE SINGLE THEME TOGGLE BUTTON ON NAVBAR */}
-            <ThemeToggle />
+            {/* RIGHT: User Profile Context & Theme Toggle */}
+            <div className="flex items-center gap-3">
+              {/* Notification Pill */}
+              <button
+                type="button"
+                className="w-8 h-8 rounded-md bg-white/10 hover:bg-white/15 text-slate-200 flex items-center justify-center transition"
+                title="Notifications"
+                aria-label="Notifications"
+              >
+                <BellIcon className="h-4 w-4" />
+              </button>
 
-            <button
-              aria-label="Notifications"
-              className="grid h-9 w-9 place-items-center text-[var(--muted)] transition duration-200 hover:text-[var(--accent)] hover:drop-shadow-[0_0_6px_rgba(255,153,51,0.45)] focus-visible:text-[var(--accent)]"
-            >
-              <BellIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="sr-only">3 notifications</span>
-            </button>
-            <Link
-              href="/dashboard"
-              className="grid h-9 w-9 place-items-center rounded-full bg-[var(--primary)] text-xs font-bold text-white shadow-xs hover:opacity-90"
-              aria-label="Profile"
-            >
-              {avatarLetter}
-            </Link>
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
+              {/* User Avatar & Context Button */}
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-md hover:bg-white/10 transition border border-transparent hover:border-white/10"
+              >
+                <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                  {avatarLetter}
+                </div>
+                <div className="hidden lg:block text-left">
+                  <div className="text-xs font-bold text-white leading-tight truncate max-w-[130px]">
+                    {displayName}
+                  </div>
+                  <div className="text-[10px] text-slate-300 leading-tight truncate max-w-[130px]">
+                    {displayRole}
+                  </div>
+                </div>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main Grid */}
-      <div className="mx-auto grid w-full max-w-[1440px] gap-6 px-4 py-6 sm:px-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-        {/* Sidebar */}
-        <aside className="space-y-5 xl:sticky xl:top-[88px] xl:h-[calc(100dvh-112px)] xl:overflow-auto">
-          {/* Officer Profile Card */}
-          <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
-            <div className="flex gap-4">
-              <div className="grid h-24 w-24 shrink-0 place-items-center rounded-md bg-[var(--primary-soft)] text-4xl font-black text-[var(--primary)] border border-[var(--border-subtle)]">
-                {avatarLetter}
-              </div>
-              <div className="min-w-0 pt-1">
-                <h2 className="truncate text-lg font-semibold text-[var(--foreground)]">{displayName}</h2>
-                <p className="mt-1 text-sm text-[var(--muted)]">{displayRole}</p>
-                <p className="mt-2 text-xs text-[var(--green)] font-medium">
-                  {profile?.department ? `${profile.department}` : "Official Statistical System"}
-                </p>
-              </div>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded-md bg-[var(--panel-inner)] border border-[var(--border-subtle)] p-3">
-                <div className="text-xl font-semibold text-[var(--foreground)]">{overallAvg}%</div>
-                <div className="text-[var(--muted)] text-xs mt-0.5">Competency Match</div>
-              </div>
-              <div className="rounded-md bg-[var(--panel-inner)] border border-[var(--border-subtle)] p-3">
-                <div className="text-xl font-semibold text-[var(--foreground)]">{profile?.competencies?.length ?? 0}</div>
-                <div className="text-[var(--muted)] text-xs mt-0.5">Tracked Skills</div>
-              </div>
-            </div>
-            <Link
-              href="/profile"
-              className="mt-4 flex h-11 items-center justify-center rounded-md bg-[var(--green-badge-bg)] text-sm font-medium text-[var(--green-badge-text)] border border-[var(--green)]/20 transition hover:opacity-90"
-            >
-              Edit Profile
-            </Link>
-            <button
-              type="button"
-              onClick={() => {
-                clearAuthSession();
-                router.replace("/login");
-              }}
-              className="mt-2 flex h-11 w-full items-center justify-center rounded-md border border-red-400/40 bg-red-500/10 text-sm font-semibold text-red-400 shadow-[0_4px_16px_rgba(239,68,68,0.12)] backdrop-blur-md transition hover:border-red-400/70 hover:bg-red-500/20 hover:text-red-300"
-            >
-              Log out
-            </button>
-          </section>
+      {/* BODY CONTAINER: LEFT SIDEBAR NAVIGATION + RIGHT CONTENT */}
+      <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-6 flex-1 flex flex-col xl:flex-row gap-6">
+        
+        {/* LEFT-SIDE PRIMARY WORKSPACE NAVIGATION CONTAINER (Desktop Container) */}
+        <aside className="hidden xl:block w-64 shrink-0">
+          <div className="sticky top-20 space-y-4">
+            
+            {/* Whole Div Navigation Container */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3.5 shadow-[var(--card-shadow)] flex flex-col justify-between">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] px-2 mb-2.5">
+                  Workspace Navigation
+                </div>
 
-          {/* Profile Overview */}
-          <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Profile Overview</h2>
-            <div className="mt-4 space-y-3 text-xs">
-              <div className="flex items-start justify-between gap-2 border-b border-[var(--border-subtle)] pb-2">
-                <span className="text-[var(--muted)]">Department</span>
-                <span className="font-medium text-[var(--foreground)] text-right">{profile?.department || "Civil Service"}</span>
-              </div>
-              <div className="flex items-start justify-between gap-2 border-b border-[var(--border-subtle)] pb-2">
-                <span className="text-[var(--muted)]">Designation</span>
-                <span className="font-medium text-[var(--foreground)] text-right">{profile?.designation || "Officer"}</span>
-              </div>
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-[var(--muted)]">Career Goal</span>
-                <span className="font-medium text-[var(--green)] text-right">{profile?.career_goal || "Competency Growth"}</span>
-              </div>
-            </div>
-          </section>
+                <nav className="space-y-4" aria-label="Authenticated Navigation">
+                  {NAV_GROUPS.map((group) => (
+                    <div key={group.groupName} className="space-y-1">
+                      <div className="text-[9px] font-bold tracking-wider text-[var(--muted-soft)] uppercase px-2 py-0.5">
+                        {group.groupName}
+                      </div>
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const isActive =
+                          pathname === item.href ||
+                          (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
-          {/* Role Competencies */}
-          <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5">
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Role Competencies</h2>
-            <div className="mt-4 space-y-2">
-              {skills.length ? (
-                skills.map((skill) => (
-                  <div key={skill.label} className="flex items-center justify-between text-xs rounded-md bg-[var(--panel-soft)] border border-[var(--border-subtle)] px-3 py-2">
-                    <span className="text-[var(--foreground)]">{skill.label}</span>
-                    <span className="font-semibold text-[var(--green)]">{skill.value}</span>
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-semibold transition group ${
+                              isActive
+                                ? "bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--primary)]/30 shadow-xs"
+                                : "text-[var(--foreground)] hover:bg-[var(--panel-soft)] hover:text-[var(--primary)]"
+                            }`}
+                          >
+                            <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[var(--primary)]" : "text-[var(--muted)] group-hover:text-[var(--primary)]"}`} />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ))}
+
+                  {/* Sign Out Action */}
+                  <div className="pt-2 border-t border-[var(--border-subtle)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearAuthSession();
+                        router.push("/login");
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/10 transition"
+                    >
+                      <LogOutIcon className="h-4 w-4 shrink-0" />
+                      <span>Sign Out</span>
+                    </button>
                   </div>
-                ))
-              ) : (
-                <div className="text-xs text-[var(--muted)]">No competencies configured yet.</div>
-              )}
+                </nav>
+              </div>
             </div>
-          </section>
+
+            {/* Persona Switcher Container */}
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--panel-soft)] p-3 text-xs shadow-xs">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] mb-1.5">
+                Official Persona Switcher
+              </div>
+              <select
+                value={currentId}
+                onChange={(e) => handlePersonaSwitch(Number(e.target.value))}
+                className="w-full h-8 rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 text-[11px] font-semibold text-[var(--foreground)] outline-none focus:border-[var(--primary)] cursor-pointer"
+              >
+                {DEMO_PERSONAS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <div className="text-[10px] text-[var(--muted)] mt-1.5 leading-tight truncate">
+                {displayRole}
+              </div>
+            </div>
+
+          </div>
         </aside>
 
-        {/* Content Area */}
-        <main className="min-w-0">
-          <div className="mb-6 flex flex-col gap-4 rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 md:flex-row md:items-end md:justify-between">
+        {/* MAIN CONTENT AREA (Right of the Navigation Sidebar) */}
+        <main className="flex-1 min-w-0">
+          {/* Page Title & Breadcrumb Context */}
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] sm:text-3xl">{title}</h1>
-              {subtitle ? <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">{subtitle}</p> : null}
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--foreground)]">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="text-xs sm:text-sm text-[var(--muted)] mt-0.5">
+                  {subtitle}
+                </p>
+              )}
             </div>
-            <Link
-              href="/assessments"
-              className="inline-flex h-10 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--panel-soft)] px-4 text-sm font-medium text-[var(--foreground)] transition hover:border-[var(--teal)] hover:text-[var(--teal)]"
-            >
-              Reassess Skills
-            </Link>
+
+            <div className="flex items-center gap-2">
+              <div className="text-xs px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5 shrink-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="truncate max-w-[220px]">{displayOrg}</span>
+              </div>
+            </div>
           </div>
+
+          {/* Render Page Children */}
           {children}
         </main>
       </div>
+
+      {/* MOBILE / TABLET LEFT DRAWER */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 xl:hidden flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          {/* Drawer Panel on Left */}
+          <div className="relative mr-auto w-72 max-w-[85vw] h-full bg-[var(--panel)] border-r border-[var(--border)] p-4 flex flex-col justify-between shadow-2xl z-10 overflow-y-auto">
+            <div>
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)] mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded bg-slate-900 border border-[var(--border)] flex items-center justify-center p-1">
+                    <Image
+                      src="/pragati-parikshan-logo.jpeg"
+                      alt="Logo"
+                      width={24}
+                      height={24}
+                      className="object-contain"
+                    />
+                  </div>
+                  <span className="font-bold text-sm text-[var(--foreground)]">PragatiParikshan</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1 rounded-md text-[var(--muted)] hover:text-[var(--foreground)]"
+                >
+                  <XIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Mobile Nav Links */}
+              <nav className="space-y-4">
+                {NAV_GROUPS.map((group) => (
+                  <div key={group.groupName} className="space-y-1">
+                    <div className="text-[9px] font-bold tracking-wider text-[var(--muted-soft)] uppercase px-2 py-0.5">
+                      {group.groupName}
+                    </div>
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive =
+                        pathname === item.href ||
+                        (item.href !== "/dashboard" && pathname.startsWith(item.href));
+
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-semibold transition ${
+                            isActive
+                              ? "bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--primary)]/30 font-bold"
+                              : "text-[var(--foreground)] hover:bg-[var(--panel-soft)]"
+                          }`}
+                        >
+                          <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[var(--primary)]" : "text-[var(--muted)]"}`} />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ))}
+              </nav>
+            </div>
+
+            {/* Drawer Bottom */}
+            <div className="pt-4 border-t border-[var(--border)] mt-4 space-y-3">
+              <div className="text-xs">
+                <span className="text-[10px] text-[var(--muted)] uppercase font-bold block mb-1">
+                  Persona Switcher:
+                </span>
+                <select
+                  value={currentId}
+                  onChange={(e) => {
+                    handlePersonaSwitch(Number(e.target.value));
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full h-8 rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 text-xs font-semibold text-[var(--foreground)]"
+                >
+                  {DEMO_PERSONAS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  clearAuthSession();
+                  router.push("/login");
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold text-red-600 dark:text-red-400 bg-red-500/10 border border-red-500/20"
+              >
+                <LogOutIcon className="h-4 w-4" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER */}
+      <footer className="border-t border-[var(--border)] bg-[var(--header)] py-4 text-center text-xs text-slate-400 mt-auto">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div>
+            <span className="font-semibold text-white">PragatiParikshan</span> • Ministry of Statistics and Programme Implementation (MoSPI)
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-slate-300">
+            <span>SIH26101 Capacity Building</span>
+            <span>•</span>
+            <span>iGOT Karmayogi &amp; NSSTA Integrated</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

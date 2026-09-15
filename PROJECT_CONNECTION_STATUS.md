@@ -56,7 +56,7 @@ This is the base that the frontend uses while calling API endpoints.
 The prototype authentication flow is implemented in the backend and frontend:
 - `POST /api/v1/users` registers users in SQLite and stores bcrypt password hashes
 - `POST /api/v1/users/login` verifies credentials
-- The frontend stores the authenticated user record in `sessionStorage` under `statlearn_auth_session`
+- The frontend stores the authenticated user record in `sessionStorage` under `pragatiparikshan_auth_session`
 - Protected workspace pages redirect to `/login` when no session exists
 - Logout clears the session and returns to `/login`
 - `/profile` updates name, email, mobile, employee ID, organization, department, designation, education, and career goal

@@ -1,8 +1,17 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+    PydanticBaseSettingsSource,
+)
 
 class Settings(BaseSettings):
+    ENVIRONMENT: str = "development"
     APP_ENV: str = "development"
+    SECRET_KEY: str = "pragatiparikshan-secret-key-2026-production-ready"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+    ENABLE_DEMO_ADMIN: bool = True
+    MAX_UPLOAD_SIZE_MB: int = 25
+
     DATABASE_URL: str = "sqlite:///./sql_app.db"
     
     # AI Config
@@ -21,4 +30,17 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return init_settings, dotenv_settings, env_settings, file_secret_settings
+
 settings = Settings()
+
+

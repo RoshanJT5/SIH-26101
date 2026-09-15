@@ -11,30 +11,31 @@ import {
   generateRemediationRoadmap,
   getCurrentUserId,
   listDocuments,
+  Question,
   QuizSubmitResponse,
   submitQuiz,
+  formatScore,
 } from "../../lib/api";
-
-type QuestionItem = {
-  id: number;
-  question_text: string;
-  options: string[];
-};
 
 function AssessmentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const docIdParam = searchParams.get("docId");
+  const topicParam = searchParams.get("topic");
+  const compIdParam = searchParams.get("competency_id");
+  const modeParam = searchParams.get("mode");
 
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<number | undefined>(
     docIdParam ? parseInt(docIdParam, 10) : undefined
   );
-  const [topic, setTopic] = useState("Survey Sampling & Statistical Inference");
+  const [topic, setTopic] = useState(
+    topicParam ? decodeURIComponent(topicParam) : "Survey Sampling Methodology & Statistical Inference"
+  );
   const [numQuestions, setNumQuestions] = useState(5);
 
   const [quizId, setQuizId] = useState<number | null>(null);
-  const [questions, setQuestions] = useState<QuestionItem[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<QuizSubmitResponse | null>(null);
@@ -48,7 +49,7 @@ function AssessmentContent() {
   useEffect(() => {
     let active = true;
 
-    async function fetchDocuments() {
+    async function fetchDocs() {
       try {
         const docs = await listDocuments();
         if (!active) return;
@@ -58,10 +59,7 @@ function AssessmentContent() {
             const parsed = parseInt(docIdParam, 10);
             setSelectedDocId(parsed);
             const found = docs.find((d) => d.id === parsed);
-            if (found) setTopic(found.filename.replace(/\.[^/.]+$/, ""));
-          } else {
-            setSelectedDocId(docs[0].id);
-            setTopic(docs[0].filename.replace(/\.[^/.]+$/, ""));
+            if (found && !topicParam) setTopic(found.filename.replace(/\.[^/.]+$/, ""));
           }
         }
       } catch {
@@ -69,34 +67,34 @@ function AssessmentContent() {
       }
     }
 
-    fetchDocuments();
+    fetchDocs();
     return () => {
       active = false;
     };
-  }, [docIdParam]);
+  }, [docIdParam, topicParam]);
 
-  // Initial load: generate initial quiz on mount
+  // Initial load: generate diagnostic quiz for target competency / role baseline
   useEffect(() => {
     let active = true;
 
     async function initialGen() {
       try {
+        const targetTopic = topicParam
+          ? decodeURIComponent(topicParam)
+          : "Survey Sampling Methodology & Statistical Inference";
+
         const data = await generateQuiz({
           document_id: docIdParam ? parseInt(docIdParam, 10) : undefined,
-          competency_name: "Survey Sampling Methodology & Statistical Inference",
+          competency_name: targetTopic,
+          competency_id: compIdParam ? parseInt(compIdParam, 10) : undefined,
           num_questions: 5,
+          quiz_type: modeParam === "diagnostic" ? "DIAGNOSTIC" : "COMPETENCY_EVALUATION",
         });
 
         if (!active) return;
         if (data && data.questions?.length) {
           setQuizId(data.quiz_id ?? data.id ?? null);
-          setQuestions(
-            data.questions.map((item) => ({
-              id: item.id,
-              question_text: item.question_text,
-              options: item.options,
-            }))
-          );
+          setQuestions(data.questions);
         }
       } catch {
         // preserve fallback questions
@@ -107,7 +105,8 @@ function AssessmentContent() {
     return () => {
       active = false;
     };
-  }, [docIdParam]);
+  }, [docIdParam, topicParam, compIdParam, modeParam]);
+
 
   // Generate quiz handler
   async function handleGenerate(e?: React.FormEvent) {
@@ -128,16 +127,10 @@ function AssessmentContent() {
 
       if (data && data.questions) {
         setQuizId(data.quiz_id ?? data.id ?? null);
-        setQuestions(
-          data.questions.map((item) => ({
-            id: item.id,
-            question_text: item.question_text,
-            options: item.options,
-          }))
-        );
+        setQuestions(data.questions);
       }
     } catch {
-      setErrorMsg("Failed to generate quiz. Please verify that the selected document has been processed.");
+      setErrorMsg("Failed to generate assessment. Please ensure study documents or manuals are processed.");
     } finally {
       setIsGenerating(false);
     }
@@ -178,21 +171,20 @@ function AssessmentContent() {
     }
   }
 
-  // Check correctness of options for post-submission review
   const currentDetail = result?.correct_details?.[String(currentQuestion?.id)];
   const userAnswer = selectedAnswers[String(currentQuestion?.id)];
 
   return (
     <AppShell
-      title="Accredited Skill Assessment"
-      subtitle={`Question ${currentIndex + 1} of ${questions.length}. Validate current competency and feed verified results into your workforce record.`}
+      title="Accredited Diagnostic Assessment"
+      subtitle="Evaluates official competencies, records proficiency scores, and automatically promotes competency levels upon reaching 70% benchmark."
     >
-      {/* Quiz Configuration & Document Selector Bar */}
+      {/* Quiz Configuration Bar */}
       <div className="mb-5 rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="grid flex-1 gap-3 sm:grid-cols-3">
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-[var(--muted)]">Source Document</span>
+              <span className="mb-1 block text-xs font-semibold text-[var(--muted)]">Source Document / Manual</span>
               <select
                 value={selectedDocId ?? ""}
                 onChange={(e) => {
@@ -216,26 +208,26 @@ function AssessmentContent() {
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-[var(--muted)]">Topic / Domain</span>
+              <span className="mb-1 block text-xs font-semibold text-[var(--muted)]">Target Competency / Topic</span>
               <input
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g. Sampling, Visualization, Inference"
+                placeholder="e.g. Sampling, National Accounts, PLFS"
                 className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 text-xs text-[var(--foreground)] placeholder:text-[var(--muted)] outline-none focus:border-[var(--primary)]"
               />
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-[var(--muted)]">Question Count</span>
+              <span className="mb-1 block text-xs font-semibold text-[var(--muted)]">Number of Questions</span>
               <select
                 value={numQuestions}
                 onChange={(e) => setNumQuestions(Number(e.target.value))}
                 className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 text-xs text-[var(--foreground)] outline-none focus:border-[var(--primary)]"
               >
-                <option value={3}>3 Questions</option>
-                <option value={5}>5 Questions</option>
-                <option value={10}>10 Questions</option>
+                <option value={3}>3 Questions (Quick Diagnostic)</option>
+                <option value={5}>5 Questions (Standard Evaluation)</option>
+                <option value={10}>10 Questions (Comprehensive Benchmark)</option>
               </select>
             </label>
           </div>
@@ -244,9 +236,9 @@ function AssessmentContent() {
             type="button"
             onClick={() => handleGenerate()}
             disabled={isGenerating}
-            className="h-10 rounded-md bg-[var(--primary)] px-4 text-xs font-bold text-white shadow-xs hover:bg-[var(--primary-hover)] transition disabled:opacity-60"
+            className="h-10 rounded-md bg-[var(--primary)] px-5 text-xs font-bold text-white shadow-xs hover:bg-[var(--primary-hover)] transition disabled:opacity-60"
           >
-            {isGenerating ? "Generating..." : "Generate from Document"}
+            {isGenerating ? "Generating Assessment..." : "Generate AI Assessment"}
           </button>
         </div>
       </div>
@@ -261,9 +253,9 @@ function AssessmentContent() {
       {questions.length === 0 ? (
         <div className="rounded-md border border-dashed border-[var(--border)] p-12 text-center bg-[var(--panel)] shadow-[var(--card-shadow)]">
           <RobotIcon className="mx-auto h-12 w-12 text-[var(--primary)]" />
-          <h2 className="mt-4 text-xl font-bold text-[var(--foreground)]">Generate an AI Assessment</h2>
+          <h2 className="mt-4 text-xl font-bold text-[var(--foreground)]">Generate an Official Assessment</h2>
           <p className="mt-2 text-xs sm:text-sm text-[var(--muted)] max-w-lg mx-auto leading-relaxed">
-            Select an uploaded study document or manual above, then click &quot;Generate from Document&quot; to produce grounded multiple-choice questions aligned with your official curriculum.
+            Select a verified MoSPI / NSSTA manual above, then click &quot;Generate AI Assessment&quot; to test your official statistical competency.
           </p>
           {documents.length === 0 && (
             <div className="mt-5">
@@ -271,18 +263,19 @@ function AssessmentContent() {
                 href="/documents"
                 className="inline-flex rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--primary-hover)] shadow-xs"
               >
-                Upload Study Document First
+                Upload Study Material First
               </Link>
             </div>
           )}
         </div>
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+          {/* Main Question / Assessment Panel */}
           <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
             <div className="mb-6">
               <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[var(--muted)]">
                 <span>Assessment Progress</span>
-                <span>{Math.round(((currentIndex + 1) / Math.max(questions.length, 1)) * 100)}%</span>
+                <span>Question {currentIndex + 1} of {questions.length} ({Math.round(((currentIndex + 1) / Math.max(questions.length, 1)) * 100)}%)</span>
               </div>
               <div className="h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
                 <div
@@ -293,8 +286,23 @@ function AssessmentContent() {
             </div>
 
             <div className="rounded-md bg-[var(--panel-inner)] border border-[var(--border-subtle)] p-5">
-              <div className="flex items-center justify-between text-xs text-[var(--muted)] font-semibold">
-                <span>Question {currentIndex + 1}</span>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--muted)] font-semibold">
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-[var(--primary-soft)] px-2 py-0.5 text-[11px] font-bold text-[var(--primary)]">
+                    Question {currentIndex + 1}
+                  </span>
+                  {currentQuestion?.competency_name && (
+                    <span className="rounded bg-[var(--panel-soft)] border border-[var(--border-subtle)] px-2 py-0.5 text-[11px] font-medium text-[var(--foreground)]">
+                      Competency: {currentQuestion.competency_name}
+                    </span>
+                  )}
+                  {currentQuestion?.difficulty && (
+                    <span className="text-[11px] text-[var(--muted)] uppercase font-semibold">
+                      [{currentQuestion.difficulty}]
+                    </span>
+                  )}
+                </div>
+
                 {result && (
                   <span className={`inline-flex items-center gap-1.5 ${userAnswer === currentDetail?.correct ? "text-[var(--green-badge-text)] font-bold" : "text-[var(--badge-red-text)] font-bold"}`}>
                     {userAnswer === currentDetail?.correct ? <CheckIcon className="h-3.5 w-3.5" /> : <XIcon className="h-3.5 w-3.5" />}
@@ -302,7 +310,8 @@ function AssessmentContent() {
                   </span>
                 )}
               </div>
-              <h2 className="mt-3 text-lg font-bold leading-relaxed text-[var(--foreground)]">
+
+              <h2 className="mt-4 text-base sm:text-lg font-bold leading-relaxed text-[var(--foreground)]">
                 {currentQuestion?.question_text}
               </h2>
 
@@ -345,10 +354,10 @@ function AssessmentContent() {
                 })}
               </div>
 
-              {/* Answer Explanation Display */}
+              {/* Official Answer Explanation */}
               {result && currentDetail?.explanation && (
                 <div className="mt-5 rounded-md border border-[var(--border-subtle)] bg-[var(--panel-soft)] p-4 text-xs leading-relaxed">
-                  <span className="font-bold text-[var(--primary)] block mb-1">Official Explanation:</span>
+                  <span className="font-bold text-[var(--primary)] block mb-1">Official Methodology Note:</span>
                   <p className="text-[var(--foreground)]">{currentDetail.explanation}</p>
                 </div>
               )}
@@ -374,24 +383,25 @@ function AssessmentContent() {
                     setCurrentIndex(0);
                   }
                 }}
-                className="rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--primary-hover)] transition shadow-xs"
+                className="rounded-md bg-[var(--primary)] px-5 py-2 text-xs font-bold text-white hover:bg-[var(--primary-hover)] transition shadow-xs"
               >
                 {result
                   ? currentIndex === questions.length - 1
-                    ? "Review First Question"
+                    ? "Review From Beginning"
                     : "Next Question"
                   : currentIndex === questions.length - 1
                     ? isSubmitting
-                      ? "Evaluating..."
-                      : "Submit Assessment"
+                      ? "Evaluating Assessment..."
+                      : "Submit Official Assessment"
                     : "Next Question"}
               </button>
             </div>
           </section>
 
+          {/* Right Sidebar: Questions Grid & Submission Results */}
           <aside className="space-y-5">
             <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
-              <h2 className="text-base font-bold text-[var(--foreground)]">Questions Grid</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">Assessment Overview</h2>
               <div className="mt-4 grid grid-cols-5 gap-2">
                 {questions.map((q, index) => {
                   const qNum = index + 1;
@@ -422,22 +432,71 @@ function AssessmentContent() {
                 })}
               </div>
 
+              {/* Assessment Evaluation Breakdown */}
               {result && (
                 <div className="mt-6 rounded-md border border-[var(--border-subtle)] bg-[var(--panel-inner)] p-4 text-center">
-                  <div className="text-3xl font-black text-[var(--foreground)]">{result.score}%</div>
-                  <div className="mt-1 text-xs uppercase font-bold tracking-wider text-[var(--muted)]">Verified Score</div>
-                  <div className="mt-2 text-xs text-[var(--muted)]">
-                    {result.correct_answers} of {result.total_questions} questions answered correctly
+                  <div className="text-3xl font-black text-[var(--foreground)]">{formatScore(result.score)}%</div>
+                  <div className="mt-1 text-xs uppercase font-bold tracking-wider text-[var(--muted)]">
+                    Diagnostic Score
                   </div>
+                  <div className="mt-1 text-xs text-[var(--muted)]">
+                    {result.correct_answers} of {result.total_questions} correct
+                  </div>
+
+                  {/* Level Upgrade Callout */}
+                  {result.level_upgrades && result.level_upgrades.length > 0 && (
+                    <div className="mt-4 rounded-md border border-[var(--green)]/40 bg-[var(--green-badge-bg)] p-3 text-left">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--green-badge-text)]">
+                        <CheckIcon className="h-4 w-4 shrink-0" />
+                        <span>Competency Promoted (+1 Level)!</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-[var(--green-badge-text)] leading-relaxed">
+                        {result.level_upgrades.join(". ")}. Your official workforce competency level has been updated and recorded in the audit log.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Competency Breakdown Table */}
+                  {result.competency_breakdown && result.competency_breakdown.length > 0 && (
+                    <div className="mt-4 border-t border-[var(--border-subtle)] pt-3 text-left">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] block mb-2">
+                        Competency Breakdown
+                      </span>
+                      <div className="space-y-2">
+                        {result.competency_breakdown.map((cb, idx) => (
+                          <div key={idx} className="rounded border border-[var(--border-subtle)] bg-[var(--panel)] p-2 text-xs">
+                            <div className="flex items-center justify-between font-semibold text-[var(--foreground)]">
+                              <span className="truncate max-w-[170px]">{cb.competency_name}</span>
+                              <span className={cb.percentage >= 70 ? "text-[var(--green-badge-text)] font-bold" : "text-[var(--badge-red-text)] font-bold"}>
+                                {formatScore(cb.percentage)}%
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--muted)]">
+                              <span>Level: L{cb.previous_level} → L{cb.new_level}</span>
+                              <span className="font-semibold">{cb.status}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={handleGenerateRemedial}
                     disabled={isRemediating}
-                    className="mt-4 w-full rounded-md bg-[var(--green-badge-bg)] border border-[var(--green)]/30 py-2 text-xs font-bold text-[var(--green-badge-text)] hover:opacity-90 transition shadow-xs"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-[var(--primary)] py-2 text-xs font-bold text-white hover:bg-[var(--primary-hover)] transition shadow-xs"
                   >
-                    <span>{isRemediating ? "Generating Roadmap..." : "Generate Remedial Roadmap"}</span>
-                    {!isRemediating && <ArrowRightIcon className="h-3.5 w-3.5" />}
+                    <span>{isRemediating ? "Generating..." : "Generate Remedial Roadmap"}</span>
+                    <ArrowRightIcon className="h-3.5 w-3.5" />
                   </button>
+
+                  <Link
+                    href="/courses"
+                    className="mt-2 block w-full rounded-md border border-[var(--border)] bg-[var(--panel)] py-2 text-xs font-bold text-[var(--foreground)] hover:border-[var(--primary)] text-center transition"
+                  >
+                    View Targeted iGOT Courses
+                  </Link>
                 </div>
               )}
             </section>

@@ -184,7 +184,7 @@ Inspired by the compact LeetCode header shown in the reference.
 ### Left
 
 -   Product logo
--   Product name: **StatLearn AI** / final approved project name
+-   Product name: **PragatiParikshan** / final approved project name
 -   Dashboard
 -   Learn
 -   Assessments
@@ -239,7 +239,7 @@ template.
 Layout:
 
 ``` text
-[Logo] StatLearn AI     Platform   How it works   Features   About
+[Logo] PragatiParikshan     Platform   How it works   Features   About
                                            [Login] [Register]
 ```
 

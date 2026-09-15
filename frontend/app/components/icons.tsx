@@ -217,3 +217,87 @@ export function PencilIcon(props: SVGProps<SVGSVGElement>) {
     </SvgIcon>
   );
 }
+
+export function MenuIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </SvgIcon>
+  );
+}
+
+export function DashboardIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <SvgIcon {...props}>
+      <rect x="3" y="3" width="7" height="9" rx="1.5" />
+      <rect x="14" y="3" width="7" height="5" rx="1.5" />
+      <rect x="14" y="12" width="7" height="9" rx="1.5" />
+      <rect x="3" y="16" width="7" height="5" rx="1.5" />
+    </SvgIcon>
+  );
+}
+
+export function TargetIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <SvgIcon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+    </SvgIcon>
+  );
+}
+
+export function UserIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </SvgIcon>
+  );
+}
+
+export function LogOutIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </SvgIcon>
+  );
+}
+
+export function BarChartIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <SvgIcon {...props}>
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </SvgIcon>
+  );
+}
+
+export function GraduationCapIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+      <path d="M6 12v5c3 3 9 3 12 0v-5" />
+    </SvgIcon>
+  );
+}
+
+export function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <SvgIcon {...props}>
+      <path d="m9 18 6-6-6-6" />
+    </SvgIcon>
+  );
+}
+
+export function ActivityIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <SvgIcon {...props}>
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </SvgIcon>
+  );
+}
+

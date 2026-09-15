@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StatLearn AI — National Statistical Competency & Intelligence Platform",
+  title: "PragatiParikshan — National Statistical Competency & Intelligence Platform",
   description: "AI-powered competency diagnosis, skill gap mapping, and accredited iGOT Karmayogi learning platform for India's Official Statistical System (MoSPI).",
 };
 
@@ -29,6 +29,22 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem('sih_theme');
+                  var theme = (saved === 'light' || saved === 'dark') ? saved : 'dark';
+                  document.documentElement.setAttribute('data-theme', theme);
+                  document.documentElement.classList.add(theme);
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
         <ThemeProvider>{children}</ThemeProvider>
       </body>

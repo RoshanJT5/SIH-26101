@@ -1,46 +1,70 @@
-# OS / editor
+# Operating System / IDE
 .vscode/
+.idea/
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
 
-# Environment files
+# Environment variables & secrets (keep examples only)
 .env
 .env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 **/.env
 **/.env.*
+!.env.example
+!**/.env.example
 .python-version
 *.local
 
-# Python cache / virtual envs
-__pycache__/
-**/__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
+# Python Virtual Environments
 .venv/
 venv/
 ENV/
+env/
+**/.venv/
+**/venv/
+**/ENV/
+
+# Python Cache & Bytecode
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
 .pytest_cache/
+.coverage
+htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# Backend runtime / local data
+# Backend Local Data & Databases
 uploads/
 **/uploads/
 *.db
-*.sqlite3
 *.sqlite
+*.sqlite3
+*.log
+logs/
 
-# Frontend build artifacts
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-frontend/build/
-frontend/.turbo/
-frontend/.vercel/
-frontend/coverage/
-frontend/*.tsbuildinfo
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/pnpm-debug.log*
-frontend/.eslintcache
+# Frontend Build & Dependencies
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+build/
+dist/
+.turbo/
+.vercel/
+coverage/
+*.tsbuildinfo
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

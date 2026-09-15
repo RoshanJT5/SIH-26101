@@ -1,482 +1,405 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "../components/app-shell";
-import { ArrowRightIcon, FileIcon, GovernmentIcon, MapIcon } from "../components/icons";
 import {
-  DocumentResponse,
-  getCurrentUserId,
-  getUser,
-  getUserRecommendations,
-  getUserSkillGaps,
-  listDocuments,
-  listRoadmaps,
-  RoadmapResponse,
+  fetchSkillGaps,
+  fetchUserProfile,
+  SkillGapData,
+  SkillGapDetail,
+  UserProfile,
+  getCurrentUserId
 } from "../../lib/api";
 
-type SkillItem = {
-  skill: string;
-  category: string;
-  current: number;
-  target: number;
-  gap: number;
-  priority: string;
-  activeRoadmap?: RoadmapResponse;
-  groundedDocument?: DocumentResponse;
-};
-
-type CourseItem = {
-  externalId: string;
-  title: string;
-  source: string;
-  match: string;
-  reason: string;
-  courseUrl: string;
-};
-
-const initialCategories = [
-  { name: "All Domains", count: 0 },
-  { name: "Statistics", count: 0 },
-  { name: "Data Science", count: 0 },
-  { name: "Survey Methods", count: 0 },
-  { name: "Visualization", count: 0 },
-  { name: "Governance", count: 0 },
-];
-
 export default function SkillGapsPage() {
-  const [skills, setSkills] = useState<SkillItem[]>([]);
-  const [courses, setCourses] = useState<CourseItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("All Domains");
+  const [gapData, setGapData] = useState<SkillGapData | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
 
   useEffect(() => {
-    let active = true;
-
-    async function loadSkillData() {
+    async function loadGaps() {
       try {
+        setLoading(true);
         const userId = getCurrentUserId();
-        const [userProfile, gapsResponse, recsResponse, roadmapsResponse, docsResponse] =
-          await Promise.all([
-            getUser(userId),
-            getUserSkillGaps(userId),
-            getUserRecommendations(userId),
-            listRoadmaps(userId),
-            listDocuments(),
-          ]);
-
-        if (!active) return;
-
-        const profileComps = userProfile?.competencies || [];
-        const rawGaps = gapsResponse?.skill_gaps || [];
-        const activeRoadmaps = roadmapsResponse || [];
-        const activeDocs = docsResponse || [];
-
-        // Build a dynamic map of all skills from profile + gaps + roadmaps
-        const skillMap = new Map<string, SkillItem>();
-
-        // Seed with profile competencies
-        profileComps.forEach((comp) => {
-          const req = Math.max(comp.required_level, 1);
-          const currentPct = Math.round((comp.current_level / req) * 100);
-          const gapPct = Math.max(0, 100 - currentPct);
-          const priority =
-            gapPct > 30 ? "High priority" : gapPct > 10 ? "Moderate gap" : "On track";
-
-          skillMap.set(comp.competency_name, {
-            skill: comp.competency_name,
-            category: comp.category || "Statistics",
-            current: Math.min(currentPct, 100),
-            target: 100,
-            gap: gapPct,
-            priority,
-          });
-        });
-
-        // Overlay with gaps response (priority level)
-        rawGaps.forEach((gap) => {
-          const req = Math.max(gap.required_level, 1);
-          const currentPct = Math.round((gap.current_level / req) * 100);
-          const gapPct = Math.max(0, 100 - currentPct);
-          const priority =
-            gap.priority === "HIGH" || gap.priority === "CRITICAL"
-              ? "High priority"
-              : gap.priority === "MEDIUM"
-                ? "Moderate gap"
-                : "On track";
-
-          const existing = skillMap.get(gap.competency);
-          if (existing) {
-            existing.current = Math.min(currentPct, 100);
-            existing.gap = gapPct;
-            existing.priority = priority;
-          } else {
-            skillMap.set(gap.competency, {
-              skill: gap.competency,
-              category: "General",
-              current: Math.min(currentPct, 100),
-              target: 100,
-              gap: gapPct,
-              priority,
-            });
-          }
-        });
-
-        // Attach active roadmaps & grounded documents to each skill
-        skillMap.forEach((item, name) => {
-          const matchedRoadmap = activeRoadmaps.find((r) => {
-            const compName = (r.competency_name || r.target_competency || "").toLowerCase();
-            return compName === name.toLowerCase() || (compName !== "" && name.toLowerCase().includes(compName));
-          });
-          if (matchedRoadmap) {
-            item.activeRoadmap = matchedRoadmap;
-            // Bump proficiency dynamically based on roadmap progress
-            const roadmapBonus = Math.round(matchedRoadmap.progress_percentage * 0.4);
-            item.current = Math.min(100, item.current + roadmapBonus);
-            item.gap = Math.max(0, item.target - item.current);
-            if (item.gap <= 10) item.priority = "On track";
-            else if (item.gap <= 25) item.priority = "Moderate gap";
-          }
-
-          // Matched grounded uploaded document
-          const matchedDoc = activeDocs.find(
-            (d) =>
-              d.filename.toLowerCase().includes(name.toLowerCase()) ||
-              name.toLowerCase().includes(d.file_type.toLowerCase())
-          );
-          if (matchedDoc) {
-            item.groundedDocument = matchedDoc;
-          }
-        });
-
-        // Fallback default skills if map is empty
-        if (skillMap.size === 0) {
-          const defaults: SkillItem[] = [
-            { skill: "Data Visualization", category: "Visualization", current: 42, target: 80, gap: 38, priority: "High priority" },
-            { skill: "Statistical Inference", category: "Statistics", current: 82, target: 90, gap: 8, priority: "On track" },
-            { skill: "Survey Sampling Methodology", category: "Survey Methods", current: 73, target: 85, gap: 12, priority: "Moderate gap" },
-            { skill: "Python for Data Analysis", category: "Data Science", current: 55, target: 80, gap: 25, priority: "Moderate gap" },
-            { skill: "Official Statistics Standards", category: "Governance", current: 51, target: 75, gap: 24, priority: "Moderate gap" },
-            { skill: "Data Quality & Cleaning", category: "Data Science", current: 88, target: 90, gap: 2, priority: "On track" },
-          ];
-          defaults.forEach((d) => skillMap.set(d.skill, d));
-        }
-
-        const formattedSkills = Array.from(skillMap.values()).sort((a, b) => b.gap - a.gap);
-
-        const formattedCourses = (recsResponse || []).map((item) => ({
-          externalId: item.external_id || "IGOT",
-          title: item.title,
-          source: item.source || "iGOT Karmayogi",
-          match: `${Math.round(item.score * 100)}%`,
-          reason: item.reason,
-          courseUrl: item.course_url || "https://portal.igotkarmayogi.gov.in",
-        }));
-
-        setSkills(formattedSkills);
-        setCourses(formattedCourses);
-      } catch {
-        if (active) {
-          setSkills([]);
-          setCourses([]);
-        }
+        const [gaps, prof] = await Promise.all([
+          fetchSkillGaps(userId),
+          fetchUserProfile(userId),
+        ]);
+        setGapData(gaps);
+        setProfile(prof);
+      } catch (err) {
+        console.error("Failed to load skill gaps", err);
       } finally {
-        if (active) setLoading(false);
+        setLoading(false);
       }
     }
-
-    loadSkillData();
-    return () => {
-      active = false;
-    };
+    loadGaps();
   }, []);
 
-  // Compute dynamic category counts
-  const dynamicCategories = initialCategories.map((cat) => {
-    if (cat.name === "All Domains") return { ...cat, count: skills.length };
-    const matches = skills.filter(
-      (s) =>
-        s.category.toLowerCase().includes(cat.name.toLowerCase()) ||
-        s.skill.toLowerCase().includes(cat.name.toLowerCase())
-    );
-    return { ...cat, count: matches.length };
-  });
+  const categories = [
+    { key: "ALL", label: "All" },
+    { key: "STATISTICAL", label: "Statistical" },
+    { key: "TECHNICAL", label: "Technical" },
+    { key: "DIGITAL_GOVERNANCE", label: "Digital" },
+    { key: "BEHAVIOURAL_MANAGERIAL", label: "Managerial" },
+  ];
 
-  const displayedSkills = skills.filter((item) => {
-    if (selectedCategory === "All Domains") return true;
-    if (item.category.toLowerCase().includes(selectedCategory.toLowerCase())) return true;
-    return item.skill.toLowerCase().includes(selectedCategory.toLowerCase());
-  });
+  const formatCategory = (cat: string) => {
+    if (cat === "BEHAVIOURAL_MANAGERIAL") return "BEHAVIOURAL & MANAGERIAL";
+    return cat.replace(/_/g, " ");
+  };
 
-  const highlightSkill =
-    skills.find((s) => s.priority === "High priority" && !s.activeRoadmap) ??
-    skills.find((s) => s.priority === "High priority") ??
-    skills[0] ??
-    null;
+  const getPriorityBadge = (item: SkillGapDetail): "HIGH" | "MEDIUM" | "ON TARGET" => {
+    if (item.gap <= 0) return "ON TARGET";
+    if (item.priority === "CRITICAL" || item.priority === "HIGH" || item.gap >= 2) return "HIGH";
+    return "MEDIUM";
+  };
+
+  const filteredGaps = gapData?.skill_gaps.filter((g) => {
+    if (selectedCategory === "ALL") return true;
+    return g.category === selectedCategory;
+  }) || [];
+
+  const totalGapsCount = gapData?.skill_gaps.filter((g) => g.gap > 0).length ?? 0;
 
   return (
     <AppShell
-      title="Skill Map"
-      subtitle="Your live competency profile dynamically updated by your active learning roadmaps, completed assessments, and uploaded government documents."
+      title="YOUR SKILL GAPS"
+      subtitle="See which skills need improvement for your current role."
     >
-      <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
-        {/* Dynamic Categories Sidebar */}
-        <aside className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-4 shadow-[var(--card-shadow)]">
-          <div className="flex items-center justify-between px-2">
-            <h2 className="text-sm font-bold text-[var(--foreground)]">Domain Filters</h2>
-            <span className="text-[11px] text-[var(--muted)]">{skills.length} skills</span>
-          </div>
-
-          <div className="mt-4 space-y-1.5">
-            {dynamicCategories.map((cat) => (
-              <button
-                key={cat.name}
-                onClick={() => setSelectedCategory(cat.name)}
-                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs transition ${
-                  selectedCategory === cat.name
-                    ? "bg-[var(--primary-soft)] text-[var(--teal)] font-bold border border-[var(--teal)]/30"
-                    : "text-[var(--muted)] hover:bg-[var(--panel-soft)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <span className="truncate">{cat.name}</span>
-                <span
-                  className={`ml-2 rounded-full px-2 py-0.5 text-[10px] ${
-                    selectedCategory === cat.name
-                      ? "bg-[var(--teal)] text-black font-bold"
-                      : "bg-[var(--panel-soft)] text-[var(--muted)] border border-[var(--border-subtle)]"
-                  }`}
-                >
-                  {cat.count}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-6 border-t border-[var(--border-subtle)] pt-4 px-2">
-            <div className="text-[11px] font-semibold text-[var(--muted)] uppercase tracking-wider">
-              Proficiency Benchmark
-            </div>
-            <div className="mt-2 text-xs text-[var(--muted)] leading-relaxed">
-              Mapped against official Ministry of Statistics &amp; Programme Implementation (MoSPI) cadre requirements.
-            </div>
-          </div>
-        </aside>
-
-        {/* Competency Gap Table */}
-        <section className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
-          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
-            <div>
-              <h2 className="text-lg font-bold text-[var(--foreground)]">
-                {selectedCategory} Competencies
-              </h2>
-              <p className="text-xs text-[var(--muted)] mt-0.5">
-                Proficiency scores automatically adapt as you complete roadmap day tasks and upload role manuals.
-              </p>
-            </div>
-            <Link
-              href="/courses"
-              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white hover:bg-[var(--primary-hover)] transition shadow-xs"
-            >
-              <span>Explore iGOT Courses</span>
-              <ArrowRightIcon className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-[760px] w-full border-separate border-spacing-y-2 text-left text-sm">
-              <thead className="text-[var(--muted)] text-xs">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Competency &amp; Context</th>
-                  <th className="px-4 py-2 font-medium">Current</th>
-                  <th className="px-4 py-2 font-medium">Target</th>
-                  <th className="px-4 py-2 font-medium">Gap</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium text-right">Roadmap Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-sm text-[var(--muted)]">
-                      Loading dynamic competency analysis...
-                    </td>
-                  </tr>
-                ) : displayedSkills.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-sm text-[var(--muted)]">
-                      No competencies found under &quot;{selectedCategory}&quot;.
-                    </td>
-                  </tr>
-                ) : (
-                  displayedSkills.map((item) => (
-                    <tr key={item.skill} className="bg-[var(--panel-inner)] text-[var(--foreground)] border border-[var(--border-subtle)]">
-                      <td className="rounded-l-md px-4 py-3.5">
-                        <div className="font-semibold text-[var(--foreground)]">{item.skill}</div>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          {item.activeRoadmap && (
-                            <span className="inline-flex items-center gap-1 rounded bg-[var(--green-badge-bg)] border border-[var(--green)]/30 px-2 py-0.5 text-[10px] text-[var(--green-badge-text)] font-semibold">
-                              <MapIcon className="h-3 w-3" />
-                              <span>Roadmap: {item.activeRoadmap.progress_percentage}% done</span>
-                            </span>
-                          )}
-                          {item.groundedDocument && (
-                            <span
-                              className="inline-flex items-center gap-1 rounded bg-[var(--primary-soft)] border border-[var(--primary)]/30 px-2 py-0.5 text-[10px] text-[var(--primary)] font-semibold truncate max-w-[180px]"
-                              title={item.groundedDocument.filename}
-                            >
-                              <FileIcon className="h-3 w-3" />
-                              <span className="truncate">{item.groundedDocument.filename}</span>
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <span className="w-9 tabular-nums text-xs font-semibold text-[var(--foreground)]">{item.current}%</span>
-                          <div className="h-2 w-24 rounded-full bg-[var(--border)] overflow-hidden">
-                            <div
-                              className="h-2 rounded-full bg-[var(--teal)] transition-all"
-                              style={{ width: `${item.current}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 tabular-nums text-xs text-[var(--muted)]">{item.target}%</td>
-                      <td className="px-4 py-3.5 tabular-nums text-xs font-medium">
-                        {item.gap > 0 ? (
-                          <span className="text-[var(--amber)] font-bold">-{item.gap}%</span>
-                        ) : (
-                          <span className="text-[var(--green)] font-bold">0%</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span
-                          className={`rounded px-2 py-0.5 text-[10px] font-bold ${
-                            item.priority === "High priority"
-                              ? "bg-[var(--badge-red-bg)] text-[var(--badge-red-text)]"
-                              : item.priority === "Moderate gap"
-                                ? "bg-[var(--badge-amber-bg)] text-[var(--badge-amber-text)]"
-                                : "bg-[var(--green-badge-bg)] text-[var(--green-badge-text)]"
-                          }`}
-                        >
-                          {item.priority}
-                        </span>
-                      </td>
-                      <td className="rounded-r-md px-4 py-3.5 text-right">
-                        <Link
-                          href={`/roadmap?competency=${encodeURIComponent(item.skill)}`}
-                          className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                            item.activeRoadmap
-                              ? "border border-[var(--teal)]/40 bg-[var(--primary-soft)] text-[var(--teal)] hover:opacity-90"
-                              : "border border-[var(--border)] bg-[var(--panel-soft)] text-[var(--foreground)] hover:border-[var(--teal)] hover:text-[var(--teal)]"
-                          }`}
-                        >
-                          <span>{item.activeRoadmap ? "View Roadmap" : "+ Roadmap"}</span>
-                          <ArrowRightIcon className="h-3.5 w-3.5" />
-                        </Link>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-
-      {/* Highlights & Context Section */}
-      <section className="mt-5 grid gap-5 lg:grid-cols-[1fr_1fr]">
-        <div className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
-          {highlightSkill ? (
-            <>
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--red)]">
-                    Highest Priority Skill Gap
-                  </span>
-                  <h2 className="text-xl font-bold text-[var(--foreground)] mt-0.5">{highlightSkill.skill}</h2>
-                </div>
-                <Link
-                  href={`/roadmap?competency=${encodeURIComponent(highlightSkill.skill)}`}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[var(--badge-red-bg)] border border-[var(--red)]/30 px-3 py-1.5 text-xs font-semibold text-[var(--badge-red-text)] hover:opacity-90 transition"
-                >
-                  <span>Launch Focused Roadmap</span>
-                  <ArrowRightIcon className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-              <p className="mt-2 text-xs text-[var(--muted)]">
-                Identified based on your role benchmark vs. verified mastery from quizzes and training roadmaps.
-              </p>
-              <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-                <div className="rounded-md bg-[var(--panel-inner)] border border-[var(--border-subtle)] p-4">
-                  <div className="text-2xl font-bold text-[var(--foreground)]">{highlightSkill.current}%</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">Current Level</div>
-                </div>
-                <div className="rounded-md bg-[var(--panel-inner)] border border-[var(--border-subtle)] p-4">
-                  <div className="text-2xl font-bold text-[var(--foreground)]">{highlightSkill.target}%</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">Target Role Level</div>
-                </div>
-                <div className="rounded-md bg-[var(--badge-red-bg)] border border-[var(--red)]/20 p-4">
-                  <div className="text-2xl font-bold text-[var(--badge-red-text)]">{highlightSkill.gap}%</div>
-                  <div className="mt-1 text-xs text-[var(--badge-red-text)] font-semibold">{highlightSkill.priority}</div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="py-8 text-center text-sm text-[var(--muted)]">
-              No priority skill gap identified. Your profile meets current role benchmarks.
-            </div>
-          )}
+      {loading ? (
+        <div className="py-20 text-center text-sm text-[var(--muted-foreground)]">
+          <div className="inline-block w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-2" />
+          <p>Loading your skill gaps...</p>
         </div>
-
-        <div className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--card-shadow)]">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-[var(--foreground)]">Recommended iGOT Learning</h2>
-            <span className="inline-flex items-center gap-1.5 rounded bg-[var(--green-badge-bg)] border border-[var(--green)]/30 px-2.5 py-1 text-xs font-bold text-[var(--green-badge-text)]">
-              <GovernmentIcon className="h-3.5 w-3.5" />
-              <span>iGOT Karmayogi</span>
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            Government courses matched to close your specific competency deficits.
+      ) : !gapData ? (
+        <div className="p-8 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-center">
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Unable to compute skill gaps. Please check your assigned role.
           </p>
-          <div className="mt-4 space-y-3">
-            {loading ? (
-              <div className="py-6 text-center text-xs text-[var(--muted)]">Loading recommendations...</div>
-            ) : courses.length === 0 ? (
-              <div className="py-6 text-center text-xs text-[var(--muted)]">No learning recommendations pending.</div>
-            ) : (
-              courses.slice(0, 3).map((course) => (
-                <div
-                  key={course.title}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md bg-[var(--panel-inner)] border border-[var(--border-subtle)] p-4"
-                >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="rounded bg-[var(--panel-soft)] px-2 py-0.5 font-mono text-[11px] text-[var(--teal)] border border-[var(--border-subtle)]">
-                        {course.externalId}
-                      </span>
-                      <span className="text-xs text-[var(--green)] font-medium">{course.source || "iGOT Karmayogi"}</span>
-                    </div>
-                    <span className="text-sm font-semibold text-[var(--foreground)]">{course.title}</span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="rounded bg-[var(--green-badge-bg)] px-2.5 py-1 text-xs font-bold text-[var(--green-badge-text)]">
-                      {course.match} match
-                    </span>
-                    <Link
-                      href="/courses"
-                      className="rounded-md bg-[var(--primary)] px-3 py-1 text-xs font-semibold text-white hover:bg-[var(--primary-hover)] transition shadow-xs"
-                    >
-                      View
-                    </Link>
-                  </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+
+          {/* User / Role Card with Clear Hierarchy */}
+          <div className="p-5 rounded-xl bg-[var(--surface)] border border-[var(--border)] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold font-mono">
+                  {gapData.service_cadre || "Official Statistics Cadre"}
+                </span>
+                <span className="text-xs text-[var(--muted-foreground)] font-medium">
+                  {gapData.organization_name}
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-[var(--foreground)] tracking-tight">
+                {gapData.role_name}
+              </h2>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                {gapData.total_competencies} competencies required for this role
+              </p>
+            </div>
+
+            {/* Summary Metrics with Dominant Numbers */}
+            <div className="flex items-center gap-6 sm:gap-8 border-t md:border-t-0 md:border-l border-[var(--border)] pt-4 md:pt-0 md:pl-8 shrink-0">
+              <div className="text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-emerald-400 leading-none">
+                  {gapData.overall_health_score}%
                 </div>
-              ))
+                <div className="text-[11px] sm:text-xs text-[var(--muted-foreground)] font-medium mt-1.5">
+                  Competency Health
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-rose-400 leading-none">
+                  {gapData.critical_gaps_count + gapData.high_gaps_count}
+                </div>
+                <div className="text-[11px] sm:text-xs text-[var(--muted-foreground)] font-medium mt-1.5">
+                  Priority Gaps
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-emerald-400 leading-none">
+                  {gapData.strengths_count}
+                </div>
+                <div className="text-[11px] sm:text-xs text-[var(--muted-foreground)] font-medium mt-1.5">
+                  Skills On Target
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Page Summary Alert Message */}
+          <div className="px-4 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-xs sm:text-sm">
+            {totalGapsCount > 0 ? (
+              <span className="font-semibold text-amber-400">
+                {totalGapsCount} {totalGapsCount === 1 ? "skill needs" : "skills need"} your attention.
+              </span>
+            ) : (
+              <span className="font-semibold text-emerald-400">
+                Your current skills meet the requirements for your role.
+              </span>
             )}
           </div>
+
+          {/* Category Filter Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {categories.map((c) => {
+              const isActive = selectedCategory === c.key;
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => setSelectedCategory(c.key)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                    isActive
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "bg-[var(--surface)] text-[var(--muted-foreground)] border border-[var(--border)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Skill Gaps Table Section */}
+          <div className="rounded-xl bg-[var(--surface)] border border-[var(--border)] overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-[var(--foreground)]">
+                  YOUR SKILL GAPS
+                </h3>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                  Your current level compared with the level required for your role.
+                </p>
+              </div>
+              <span className="text-xs text-[var(--muted-foreground)] font-mono">
+                {filteredGaps.length} {filteredGaps.length === 1 ? "Item" : "Items"}
+              </span>
+            </div>
+
+            {filteredGaps.length === 0 ? (
+              <div className="p-8 text-center text-sm text-[var(--muted-foreground)]">
+                No skills found in this category.
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-[var(--border)] bg-[var(--surface-hover)] text-[var(--muted-foreground)] uppercase tracking-wider text-[11px]">
+                        <th className="py-3.5 px-4 font-semibold">SKILL</th>
+                        <th className="py-3.5 px-4 text-center font-semibold">REQUIRED</th>
+                        <th className="py-3.5 px-4 text-center font-semibold">CURRENT</th>
+                        <th className="py-3.5 px-4 text-center font-semibold">GAP</th>
+                        <th className="py-3.5 px-4 text-center font-semibold">PRIORITY</th>
+                        <th className="py-3.5 px-4 text-right font-semibold">ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {filteredGaps.map((item) => {
+                        const priority = getPriorityBadge(item);
+                        const hasGap = item.gap > 0;
+
+                        return (
+                          <tr
+                            key={item.competency_id}
+                            className={`transition group ${
+                              hasGap
+                                ? "hover:bg-[var(--surface-hover)]/60"
+                                : "opacity-85 hover:opacity-100 hover:bg-[var(--surface-hover)]/40"
+                            }`}
+                          >
+                            {/* Skill Name & Description */}
+                            <td className="py-4 px-4 font-medium text-[var(--foreground)] max-w-sm">
+                              <div className="font-semibold text-[15px] text-[var(--foreground)]">
+                                {item.competency}
+                              </div>
+                              {item.why_it_matters && (
+                                <p className="text-[11px] text-[var(--muted-foreground)] line-clamp-1 mt-0.5">
+                                  {item.why_it_matters}
+                                </p>
+                              )}
+                              <span className="text-[10px] text-[var(--muted-foreground)] px-1.5 py-0.5 rounded bg-[var(--surface-hover)] border border-[var(--border)] whitespace-nowrap inline-block mt-1">
+                                {formatCategory(item.category)}
+                              </span>
+                            </td>
+
+                            {/* Required Level */}
+                            <td className="py-4 px-4 text-center">
+                              <span className="text-sm font-semibold text-[var(--foreground)]">
+                                Level {item.required_level}
+                              </span>
+                              <span className="text-[10px] text-[var(--muted-foreground)]"> / 5</span>
+                            </td>
+
+                            {/* Current Level */}
+                            <td className="py-4 px-4 text-center">
+                              <span
+                                className={`text-sm font-bold ${
+                                  item.current_level >= item.required_level
+                                    ? "text-emerald-400"
+                                    : "text-amber-400"
+                                }`}
+                              >
+                                Level {item.current_level}
+                              </span>
+                              <span className="text-[10px] text-[var(--muted-foreground)]"> / 5</span>
+                            </td>
+
+                            {/* Gap */}
+                            <td className="py-4 px-4 text-center">
+                              {hasGap ? (
+                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                  {item.gap} {item.gap === 1 ? "LEVEL" : "LEVELS"}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  ON TARGET
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Priority */}
+                            <td className="py-4 px-4 text-center">
+                              <span
+                                className={`px-2.5 py-0.5 rounded text-[11px] font-bold inline-block border ${
+                                  priority === "HIGH"
+                                    ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                                    : priority === "MEDIUM"
+                                    ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                    : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                }`}
+                              >
+                                {priority}
+                              </span>
+                            </td>
+
+                            {/* Action (Assess is Primary, iGOT is Secondary) */}
+                            <td className="py-4 px-4 text-right">
+                              {hasGap ? (
+                                <div className="flex items-center justify-end gap-2">
+                                  <Link
+                                    href={`/assessments?topic=${encodeURIComponent(item.competency)}`}
+                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition inline-flex items-center gap-1"
+                                  >
+                                    Assess →
+                                  </Link>
+                                  <Link
+                                    href={`/courses?search=${encodeURIComponent(item.competency)}`}
+                                    className="px-2.5 py-1.5 rounded-lg bg-[var(--surface-hover)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-xs font-medium transition inline-flex items-center gap-1"
+                                    title="View related iGOT learning modules"
+                                  >
+                                    iGOT ↗
+                                  </Link>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-emerald-400 font-semibold inline-block py-1 px-2">
+                                  ✓ On Target
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Responsive Stacked Card View */}
+                <div className="md:hidden divide-y divide-[var(--border)]">
+                  {filteredGaps.map((item) => {
+                    const priority = getPriorityBadge(item);
+                    const hasGap = item.gap > 0;
+
+                    return (
+                      <div key={item.competency_id} className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-bold text-sm text-[var(--foreground)]">
+                              {item.competency}
+                            </div>
+                            <span className="text-[10px] text-[var(--muted-foreground)] px-1.5 py-0.5 rounded bg-[var(--surface-hover)] border border-[var(--border)] inline-block mt-1">
+                              {formatCategory(item.category)}
+                            </span>
+                          </div>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${
+                              priority === "HIGH"
+                                ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                                : priority === "MEDIUM"
+                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            }`}
+                          >
+                            {priority}
+                          </span>
+                        </div>
+
+                        {item.why_it_matters && (
+                          <p className="text-[11px] text-[var(--muted-foreground)]">
+                            {item.why_it_matters}
+                          </p>
+                        )}
+
+                        <div className="grid grid-cols-3 gap-2 text-xs py-2 text-center bg-[var(--surface-hover)] rounded-lg p-2">
+                          <div>
+                            <div className="text-[10px] text-[var(--muted-foreground)] uppercase font-medium">Required</div>
+                            <div className="font-bold text-[var(--foreground)] mt-0.5">Level {item.required_level}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-[var(--muted-foreground)] uppercase font-medium">Current</div>
+                            <div
+                              className={`font-bold mt-0.5 ${
+                                item.current_level >= item.required_level ? "text-emerald-400" : "text-amber-400"
+                              }`}
+                            >
+                              Level {item.current_level}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-[var(--muted-foreground)] uppercase font-medium">Gap</div>
+                            <div className={`font-bold mt-0.5 ${hasGap ? "text-rose-400" : "text-emerald-400"}`}>
+                              {hasGap ? `${item.gap} Levels` : "On Target"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {hasGap ? (
+                          <div className="flex items-center gap-2 pt-1">
+                            <Link
+                              href={`/assessments?topic=${encodeURIComponent(item.competency)}`}
+                              className="flex-1 text-center py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition"
+                            >
+                              Assess →
+                            </Link>
+                            <Link
+                              href={`/courses?search=${encodeURIComponent(item.competency)}`}
+                              className="px-4 py-2 rounded-lg bg-[var(--surface-hover)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-xs font-medium transition"
+                            >
+                              iGOT ↗
+                            </Link>
+                          </div>
+                        ) : (
+                          <div className="text-center py-1 text-xs text-emerald-400 font-semibold">
+                            ✓ On Target
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
         </div>
-      </section>
+      )}
     </AppShell>
   );
 }
+
+

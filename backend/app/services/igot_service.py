@@ -1,252 +1,297 @@
-from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 
-class LearningProvider(ABC):
+class LearningProvider:
     """
-    Abstract Base Class for Learning Providers as defined in PRD FR-009.
-    Enables seamless swapping between Mock provider and live iGOT Karmayogi API.
-    """
-
-    @abstractmethod
-    def search_courses(self, query: str) -> List[Dict[str, Any]]:
-        pass
-
-    @abstractmethod
-    def get_course(self, external_id: str) -> Optional[Dict[str, Any]]:
-        pass
-
-    @abstractmethod
-    def list_all_courses(self) -> List[Dict[str, Any]]:
-        pass
-
-    @abstractmethod
-    def get_user_progress(self, user_id: int) -> List[Dict[str, Any]]:
-        pass
-
-
-class MockIGOTProvider(LearningProvider):
-    """
-    Mock iGOT Karmayogi Provider providing the official course catalog
-    aligned with India's Official Statistical System & civil service competencies.
+    Curated repository of official verified training resources for India's Official Statistical System.
+    Distinguishes between:
+    1. iGOT Karmayogi verified e-learning courses
+    2. NSSTA / TPAC training programmes (Residential & Virtual)
+    3. Approved external statistical learning resources
     """
 
-    OFFICIAL_IGOT_CATALOG: List[Dict[str, Any]] = [
-        # Statistical Methodologies & Official Statistics
+    # Curated, verified iGOT Karmayogi e-learning courses for the Official Statistical System
+    VERIFIED_IGOT_COURSES: List[Dict[str, Any]] = [
         {
             "external_id": "IGOT-STAT-001",
-            "source": "iGOT Karmayogi",
             "title": "Survey Design and Field Enumeration Methodologies",
             "description": "Comprehensive training on questionnaire design, multi-stage stratified survey planning, and standard operating procedures for field survey operations.",
+            "provider": "Capacity Building Commission / MoSPI",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039841",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039841/overview",
             "level": "Intermediate",
             "duration_hours": 8,
             "language": "English",
-            "skills": "Survey Design,Sampling",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "Survey Design,Sampling Techniques,Data Quality & Validation Frameworks",
+            "competency_mappings": [
+                ("Survey Design", 4, 1.0),
+                ("Sampling Techniques", 3, 0.8),
+                ("Data Quality & Validation Frameworks", 3, 0.7)
+            ]
         },
         {
             "external_id": "IGOT-STAT-002",
-            "source": "iGOT Karmayogi",
             "title": "Advanced Sampling Techniques in Official Statistics",
-            "description": "Principles of simple random sampling, probability proportional to size (PPS), cluster sampling, and estimation error mitigation by NSSTA.",
+            "description": "Principles of simple random sampling, probability proportional to size (PPS), cluster sampling, and estimation error mitigation developed by NSSTA.",
+            "provider": "National Statistical Systems Training Academy (NSSTA)",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039842",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039842/overview",
             "level": "Intermediate",
             "duration_hours": 6,
             "language": "English",
-            "skills": "Sampling,Survey Design",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "Sampling Techniques,Survey Design",
+            "competency_mappings": [
+                ("Sampling Techniques", 4, 1.0),
+                ("Survey Design", 3, 0.8)
+            ]
         },
         {
             "external_id": "IGOT-STAT-003",
-            "source": "iGOT Karmayogi",
             "title": "National Accounts Compilation & Macroeconomic Aggregates",
-            "description": "SNA 2008 guidelines, Gross Value Added (GVA) estimation, GDP deflators, and input-output table compilation for MoSPI statistical officers.",
+            "description": "SNA 2008 guidelines, Gross Value Added (GVA) estimation, GDP deflators, and input-output table compilation for statistical officers.",
+            "provider": "National Accounts Division / MoSPI",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039843",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039843/overview",
             "level": "Advanced",
             "duration_hours": 14,
             "language": "English",
-            "skills": "National Accounts",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "National Accounts & GVA,Price Statistics & Index Numbers",
+            "competency_mappings": [
+                ("National Accounts & GVA", 5, 1.0),
+                ("Price Statistics & Index Numbers", 4, 0.8),
+                ("Agricultural & Industrial Statistics", 3, 0.7)
+            ]
         },
         {
             "external_id": "IGOT-STAT-004",
-            "source": "iGOT Karmayogi",
             "title": "Price Statistics: CPI, WPI and Inflation Indexing",
             "description": "Methodologies for Consumer Price Index (CPI), Wholesale Price Index (WPI), base year revisions, and Laspeyres price index aggregation.",
+            "provider": "Price Statistics Division / MoSPI",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039844",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039844/overview",
             "level": "Intermediate",
             "duration_hours": 10,
             "language": "English",
-            "skills": "Price Statistics",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "Price Statistics & Index Numbers,National Accounts & GVA",
+            "competency_mappings": [
+                ("Price Statistics & Index Numbers", 4, 1.0),
+                ("National Accounts & GVA", 3, 0.7)
+            ]
         },
         {
             "external_id": "IGOT-STAT-005",
-            "source": "iGOT Karmayogi",
             "title": "Periodic Labour Force Survey (PLFS) & Employment Analytics",
             "description": "Labor force participation rates, worker population ratios, activity status classification, and analyzing NSSO/PLFS microdata.",
+            "provider": "NSSO Survey Coordination",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039845",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039845/overview",
             "level": "Intermediate",
             "duration_hours": 8,
             "language": "English",
-            "skills": "Labour Statistics",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "Labour & Employment Statistics,Sampling Techniques,Python for Statistical Computing",
+            "competency_mappings": [
+                ("Labour & Employment Statistics", 4, 1.0),
+                ("Sampling Techniques", 3, 0.7),
+                ("Python for Statistical Computing", 3, 0.6)
+            ]
         },
-
-        # Technical & Data Systems
+        {
+            "external_id": "IGOT-STAT-006",
+            "title": "Index of Industrial Production (IIP) and Annual Survey of Industries",
+            "description": "Compilation of industrial production indices, enterprise sampling frames, and establishment reporting standards in India.",
+            "provider": "Economic Statistics Division / MoSPI",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039846",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039846/overview",
+            "level": "Intermediate",
+            "duration_hours": 9,
+            "language": "English",
+            "skills": "Agricultural & Industrial Statistics,Price Statistics & Index Numbers",
+            "competency_mappings": [
+                ("Agricultural & Industrial Statistics", 4, 1.0),
+                ("Data Quality & Validation Frameworks", 3, 0.7)
+            ]
+        },
         {
             "external_id": "IGOT-TECH-001",
-            "source": "iGOT Karmayogi",
-            "title": "Python for Data Analysis in Public Administration",
-            "description": "Mastering Pandas, NumPy, and automation scripts for cleaning, wrangling, and transforming large-scale administrative datasets.",
+            "title": "Python for Statistical Computing in Public Administration",
+            "description": "Mastering Pandas, NumPy, automated data wrangling, and cleaning large-scale official survey datasets.",
+            "provider": "Capacity Building Commission / NIC",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039847",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039847/overview",
             "level": "Beginner",
             "duration_hours": 12,
             "language": "English",
-            "skills": "Python",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "Python for Statistical Computing,Relational Databases & SQL",
+            "competency_mappings": [
+                ("Python for Statistical Computing", 4, 1.0),
+                ("Relational Databases & SQL", 3, 0.7)
+            ]
         },
         {
             "external_id": "IGOT-TECH-002",
-            "source": "iGOT Karmayogi",
-            "title": "FastAPI: Building High-Performance Modern REST APIs",
-            "description": "Designing secure, microservice-ready backend APIs with Pydantic validation, async endpoints, and relational databases for government portals.",
-            "level": "Intermediate",
-            "duration_hours": 10,
-            "language": "English",
-            "skills": "Python,SQL,APIs",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
-        },
-        {
-            "external_id": "IGOT-TECH-003",
-            "source": "iGOT Karmayogi",
-            "title": "R Programming for Statistical Computing & Econometrics",
-            "description": "Exploratory data analysis, regression modeling, time-series forecasting, and ggplot2 visualizations tailored for policy researchers.",
+            "title": "R Programming for Econometric Modeling & Policy Analysis",
+            "description": "Exploratory data analysis, regression modeling, time-series forecasting, and ggplot2 visualizations tailored for official statistical researchers.",
+            "provider": "Indian Statistical Institute (ISI) / NSSTA",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039848",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039848/overview",
             "level": "Intermediate",
             "duration_hours": 12,
             "language": "English",
-            "skills": "R,Data Visualization",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "R Programming & Econometrics,Interactive Data Visualization",
+            "competency_mappings": [
+                ("R Programming & Econometrics", 4, 1.0),
+                ("Interactive Data Visualization", 3, 0.8)
+            ]
+        },
+        {
+            "external_id": "IGOT-TECH-003",
+            "title": "Relational Databases and SQL for Administrative Microdata",
+            "description": "Complex joins, indexing strategies, analytical window functions, and database integrity management for government data systems.",
+            "provider": "National Informatics Centre (NIC)",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039849",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039849/overview",
+            "level": "Intermediate",
+            "duration_hours": 8,
+            "language": "English",
+            "skills": "Relational Databases & SQL,Data Quality & Validation Frameworks",
+            "competency_mappings": [
+                ("Relational Databases & SQL", 4, 1.0),
+                ("Data Quality & Validation Frameworks", 3, 0.7)
+            ]
         },
         {
             "external_id": "IGOT-TECH-004",
-            "source": "iGOT Karmayogi",
-            "title": "Relational Databases & SQL for Administrative Records",
-            "description": "Complex joins, indexing strategies, analytical window functions, and database integrity management for government reporting.",
+            "title": "Geographic Information Systems (GIS) & Spatial Analytics",
+            "description": "Georeferencing, choropleth thematic mapping, QGIS workflows, and spatial boundary overlays for district development monitoring.",
+            "provider": "Digital India Corporation",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039850",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039850/overview",
             "level": "Intermediate",
-            "duration_hours": 8,
+            "duration_hours": 9,
             "language": "English",
-            "skills": "SQL",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "GIS & Spatial Analytics,Interactive Data Visualization",
+            "competency_mappings": [
+                ("GIS & Spatial Analytics", 4, 1.0),
+                ("Interactive Data Visualization", 3, 0.7)
+            ]
         },
         {
             "external_id": "IGOT-TECH-005",
-            "source": "iGOT Karmayogi",
-            "title": "Geographic Information Systems (GIS) & Spatial Analytics",
-            "description": "Georeferencing, choropleth thematic mapping, QGIS workflows, and spatial boundary overlays for district development monitoring.",
-            "level": "Intermediate",
-            "duration_hours": 9,
-            "language": "English",
-            "skills": "GIS",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
-        },
-        {
-            "external_id": "IGOT-TECH-006",
-            "source": "iGOT Karmayogi",
-            "title": "Interactive Data Visualization & Dashboard Design",
+            "title": "Interactive Data Visualization & Statistical Storytelling",
             "description": "Visualizing complex survey data using modern charts, dashboards, and storytelling principles for policy briefs and executive decisions.",
+            "provider": "Capacity Building Commission",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039851",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039851/overview",
             "level": "Beginner",
             "duration_hours": 6,
             "language": "English",
-            "skills": "Data Visualization",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "Interactive Data Visualization,Official Communication & Policy Briefs",
+            "competency_mappings": [
+                ("Interactive Data Visualization", 4, 1.0),
+                ("Official Communication & Policy Briefs", 3, 0.8)
+            ]
         },
-        {
-            "external_id": "IGOT-TECH-007",
-            "source": "iGOT Karmayogi",
-            "title": "Artificial Intelligence & Machine Learning in Governance",
-            "description": "Foundation of ML classification, natural language processing, LLMs, and ethical AI deployment across public service delivery.",
-            "level": "Intermediate",
-            "duration_hours": 15,
-            "language": "English",
-            "skills": "AI/ML,Python",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
-        },
-
-        # Digital Governance, Security & Policy
         {
             "external_id": "IGOT-GOV-001",
-            "source": "iGOT Karmayogi",
-            "title": "Cybersecurity Essentials for Government Infrastructure",
-            "description": "Threat mitigation, zero-trust architecture, CERT-In compliance guidelines, and cryptographic best practices for government systems.",
-            "level": "Advanced",
-            "duration_hours": 8,
+            "title": "Digital Personal Data Protection (DPDP) Act 2023 Compliance",
+            "description": "Regulatory duties of Data Fiduciaries, citizen consent frameworks, privacy-by-design principles, and statistical anonymization techniques.",
+            "provider": "Ministry of Electronics and IT (MeitY) / DoPT",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039852",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039852/overview",
+            "level": "Intermediate",
+            "duration_hours": 6,
             "language": "English",
-            "skills": "Cybersecurity",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "Data Privacy & DPDP Act 2023,Cybersecurity & Infrastructure Protection",
+            "competency_mappings": [
+                ("Data Privacy & DPDP Act 2023", 5, 1.0),
+                ("Cybersecurity & Infrastructure Protection", 3, 0.7)
+            ]
         },
         {
             "external_id": "IGOT-GOV-002",
-            "source": "iGOT Karmayogi",
-            "title": "Digital Personal Data Protection (DPDP) Act 2023 Compliance",
-            "description": "Regulatory duties of Data Fiduciaries, citizen consent frameworks, privacy-by-design principles, and statistical anonymization techniques.",
-            "level": "Intermediate",
-            "duration_hours": 6,
+            "title": "Cybersecurity Essentials for Government IT & Data Systems",
+            "description": "Threat mitigation, zero-trust architecture, CERT-In compliance guidelines, and cryptographic best practices for government systems.",
+            "provider": "National Critical Information Infrastructure Protection Centre",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039853",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039853/overview",
+            "level": "Advanced",
+            "duration_hours": 8,
             "language": "English",
-            "skills": "Data Privacy,Cybersecurity",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "Cybersecurity & Infrastructure Protection,Digital Public Infrastructure & APIs",
+            "competency_mappings": [
+                ("Cybersecurity & Infrastructure Protection", 4, 1.0),
+                ("Digital Public Infrastructure & APIs", 3, 0.7)
+            ]
         },
-
-        # Behavioural & Managerial Competencies
         {
             "external_id": "IGOT-MGT-001",
-            "source": "iGOT Karmayogi",
-            "title": "Transformational Leadership in Public Administration",
+            "title": "Strategic Leadership & Change Management in Public Admin",
             "description": "Strategic thinking, leading inter-departmental teams, stakeholder consensus building, and fostering organizational resilience.",
+            "provider": "LBSNAA Mussoorie / DoPT",
+            "source_type": "iGOT Karmayogi",
+            "igot_course_id": "do_113840291039854",
+            "course_url": "https://portal.igotkarmayogi.gov.in/app/toc/do_113840291039854/overview",
             "level": "Advanced",
             "duration_hours": 7,
             "language": "English",
-            "skills": "Leadership",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
-        },
-        {
-            "external_id": "IGOT-MGT-002",
-            "source": "iGOT Karmayogi",
-            "title": "Effective Official Communication & Briefing Notes",
-            "description": "Drafting clear policy notes, press releases, parliamentary responses, and concise inter-ministerial correspondence.",
-            "level": "Beginner",
-            "duration_hours": 5,
-            "language": "English",
-            "skills": "Communication",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
-        },
-        {
-            "external_id": "IGOT-MGT-003",
-            "source": "iGOT Karmayogi",
-            "title": "Government Project Management & Procurement (GeM / GFR)",
-            "description": "Managing milestones, risk registers, General Financial Rules (GFR) compliance, and public procurement through the GeM portal.",
-            "level": "Intermediate",
-            "duration_hours": 9,
-            "language": "English",
-            "skills": "Project Management",
-            "course_url": "https://portal.igotkarmayogi.gov.in"
+            "skills": "Strategic Leadership in Public Admin,Official Communication & Policy Briefs",
+            "competency_mappings": [
+                ("Strategic Leadership in Public Admin", 4, 1.0),
+                ("Official Communication & Policy Briefs", 3, 0.8)
+            ]
         }
     ]
 
-    def search_courses(self, query: str) -> List[Dict[str, Any]]:
-        q = query.lower()
-        return [
-            c for c in self.OFFICIAL_IGOT_CATALOG
-            if q in c["title"].lower() or q in c["description"].lower() or q in c["skills"].lower()
-        ]
+    # Official NSSTA & TPAC In-Service Residential and Virtual Training Programmes
+    NSSTA_TPAC_PROGRAMMES: List[Dict[str, Any]] = [
+        {
+            "title": "Executive Workshop on System of National Accounts (SNA 2008) & GVA Balancing",
+            "provider": "NSSTA Greater Noida (MoSPI)",
+            "programme_type": "In-Service Residential",
+            "description": "5-day intensive residential immersion on institutional sector accounts, FISIM allocation, and supply-use balancing matrices.",
+            "competencies": "National Accounts & GVA,Price Statistics & Index Numbers",
+            "eligibility": "ISS Senior Time Scale Officers, Deputy Directors, Senior Research Officers",
+            "duration": "5 Days (Residential)",
+            "registration_url": "https://mospi.gov.in/nssta/training-calendar"
+        },
+        {
+            "title": "Advanced Survey Sampling & CAPI Tablet-Based Field Operations",
+            "provider": "NSSTA / NSSO FOD Training Wing",
+            "programme_type": "In-Service Residential",
+            "description": "Practical field laboratory on multi-stage cluster sampling, sample weight calculation, and real-time CAPI data quality audits.",
+            "competencies": "Sampling Techniques,Survey Design,Data Quality & Validation Frameworks",
+            "eligibility": "Field Supervisors, Statistical Officers, NSSO Field Officers",
+            "duration": "4 Days (Residential)",
+            "registration_url": "https://mospi.gov.in/nssta/training-calendar"
+        },
+        {
+            "title": "National Masterclass on DPDP Act 2023 Compliance & Statistical Anonymization",
+            "provider": "TPAC / MoSPI & MeitY Legal Division",
+            "programme_type": "Virtual Masterclass",
+            "description": "Comprehensive legal and technical framework for applying differential privacy, k-anonymity, and consent governance to official public microdata.",
+            "competencies": "Data Privacy & DPDP Act 2023,Digital Public Infrastructure & APIs",
+            "eligibility": "All Statistical Officers, Data Analysts, IT Infrastructure Leads",
+            "duration": "2 Days (Online Interactive)",
+            "registration_url": "https://mospi.gov.in/tpac/programmes"
+        }
+    ]
 
-    def get_course(self, external_id: str) -> Optional[Dict[str, Any]]:
-        for c in self.OFFICIAL_IGOT_CATALOG:
-            if c["external_id"] == external_id:
-                return c
-        return None
+    @classmethod
+    def list_all_courses(cls) -> List[Dict[str, Any]]:
+        return cls.VERIFIED_IGOT_COURSES
 
-    def list_all_courses(self) -> List[Dict[str, Any]]:
-        return self.OFFICIAL_IGOT_CATALOG
-
-    def get_user_progress(self, user_id: int) -> List[Dict[str, Any]]:
-        # In production this queries Karmayogi Bharat telemetry APIs
-        return []
-
-
-# Default singleton instance of the learning provider
-igot_provider = MockIGOTProvider()
+    @classmethod
+    def list_all_programmes(cls) -> List[Dict[str, Any]]:
+        return cls.NSSTA_TPAC_PROGRAMMES

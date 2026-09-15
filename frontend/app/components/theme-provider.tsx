@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "dark" | "light";
 
@@ -18,40 +18,50 @@ const ThemeContext = createContext<ThemeContextType>({
   mounted: false,
 });
 
-function subscribe(callback: () => void) {
-  window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
+function applyThemeToDOM(theme: Theme) {
+  if (typeof document === "undefined") return;
+  document.documentElement.setAttribute("data-theme", theme);
+  if (theme === "dark") {
+    document.documentElement.classList.add("dark");
+    document.documentElement.classList.remove("light");
+  } else {
+    document.documentElement.classList.add("light");
+    document.documentElement.classList.remove("dark");
+  }
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const isServer = useSyncExternalStore(
-    subscribe,
-    () => false,
-    () => true
-  );
-
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("sih_theme") as Theme | null;
-        if (saved === "light" || saved === "dark") return saved;
-      } catch {}
-    }
-    return "dark";
-  });
+  const [mounted, setMounted] = useState(false);
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   useEffect(() => {
+    let initialTheme: Theme = "dark";
     try {
-      document.documentElement.setAttribute("data-theme", theme);
+      const saved = localStorage.getItem("sih_theme") as Theme | null;
+      if (saved === "light" || saved === "dark") {
+        initialTheme = saved;
+      }
     } catch {}
-  }, [theme]);
+    setThemeState(initialTheme);
+    applyThemeToDOM(initialTheme);
+    setMounted(true);
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "sih_theme" && (e.newValue === "light" || e.newValue === "dark")) {
+        setThemeState(e.newValue as Theme);
+        applyThemeToDOM(e.newValue as Theme);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     try {
       localStorage.setItem("sih_theme", newTheme);
-      document.documentElement.setAttribute("data-theme", newTheme);
     } catch {}
+    applyThemeToDOM(newTheme);
   };
 
   const toggleTheme = () => {
@@ -60,7 +70,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme, mounted: !isServer }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme, mounted }}>
       {children}
     </ThemeContext.Provider>
   );

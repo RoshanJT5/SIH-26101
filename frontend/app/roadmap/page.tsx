@@ -21,6 +21,7 @@ import {
   RoadmapResponse,
   submitQuizAnswers,
   updateRoadmapProgress,
+  formatScore,
 } from "../../lib/api";
 
 type TaskItem = {
@@ -454,36 +455,28 @@ function RoadmapContent() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
                   {/* Take Day Quiz Button */}
                   <button
                     type="button"
                     onClick={() => handleOpenDayQuiz(task)}
-                    className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                      task.status === "Completed"
-                        ? "border border-[var(--green)]/40 bg-[var(--green-badge-bg)] text-[var(--green-badge-text)] hover:opacity-90"
-                        : "border border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)] hover:opacity-90 shadow-xs"
-                    }`}
+                    className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold border border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)] hover:opacity-90 shadow-xs transition"
                   >
                     <span>{task.status === "Completed" ? "Retake Quiz" : "Take Day Quiz"}</span>
                     <PencilIcon className="h-3.5 w-3.5" />
                   </button>
 
-                  {/* Manual Status Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => handleTaskToggle(task)}
-                    className={`rounded-md px-2.5 py-1.5 text-xs font-bold transition ${
-                      task.status === "Completed"
-                        ? "bg-[var(--green-badge-bg)] text-[var(--green-badge-text)] border border-[var(--green)]/40"
-                        : task.status === "In progress"
-                          ? "bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--primary)]/40"
-                          : "bg-[var(--panel-soft)] text-[var(--muted)] border border-[var(--border)] hover:text-[var(--foreground)]"
-                    }`}
-                    title="Toggle completion status"
-                  >
-                    {task.status === "Completed" ? <CheckIcon className="h-3.5 w-3.5" /> : <span className="h-2.5 w-2.5 rounded-full border border-current" />} 
-                  </button>
+                  {/* Integrated Completion Status Indicator (shown only when completed) */}
+                  {task.status === "Completed" && (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-md border border-[var(--green)]/30 bg-[var(--green-badge-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--green-badge-text)] select-none"
+                      role="status"
+                      aria-label="Quiz Completed"
+                    >
+                      <CheckIcon className="h-3.5 w-3.5" />
+                      <span>Completed</span>
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -554,7 +547,7 @@ function RoadmapContent() {
                     }`}
                   >
                     <div className="text-3xl font-black">
-                      {quizResult.score}%
+                      {formatScore(quizResult.score)}%
                     </div>
                     <div className="text-xs mt-1 uppercase tracking-wider font-bold">
                       {quizResult.score >= 60 ? "Day Assessment Passed!" : "Assessment Needs Revision"}
