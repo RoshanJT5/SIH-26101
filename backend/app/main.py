@@ -161,18 +161,38 @@ app = FastAPI(
 )
 
 # Environment-driven CORS Setup
-allowed_origins_raw = "https://pragatiparikshan.vercel.app/"
+allowed_origins_raw = getattr(settings, "ALLOWED_ORIGINS", "")
+parsed_origins = [
+    orig.strip().rstrip("/")
+    for orig in allowed_origins_raw.split(",")
+    if orig.strip()
+]
+
+# Standard production and local development origins (strictly without trailing slashes)
+default_origins = [
+    "https://pragatiparikshan.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
 if allowed_origins_raw.strip() == "*":
     origins = ["*"]
 else:
-    origins = [orig.strip() for orig in allowed_origins_raw.split(",") if orig.strip()]
+    # Merge unique origins preserving order
+    origins = list(dict.fromkeys(default_origins + parsed_origins))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"^https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Health check endpoints
