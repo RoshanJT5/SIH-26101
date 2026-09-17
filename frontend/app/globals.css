@@ -1,6 +1,64 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
+
 :root,
+:root[data-theme="light"],
+html[data-theme="light"],
+[data-theme="light"],
+.light {
+  /* Indian Public Sector & iGOT Karmayogi Design Language (UX4G Standard) - DEFAULT */
+  color-scheme: light;
+  --background: #F5F7FA;
+  --foreground: #1B1F24;
+  --header: #123B75;
+  --header-text: #FFFFFF;
+  --header-nav-active: rgba(255, 255, 255, 0.18);
+  --header-nav-hover: rgba(255, 255, 255, 0.10);
+
+  --panel: #FFFFFF;
+  --panel-strong: #FFFFFF;
+  --panel-soft: #F0F4F8;
+  --panel-subtle: #EEF3F8;
+  --panel-inner: #FAFBFD;
+  --panel-warm: #FFF8EF;
+  --panel-warm-soft: #FDF6EC;
+
+  --muted: #5F6368;
+  --muted-soft: #7A828B;
+  --border: #D9DEE7;
+  --border-subtle: #E8ECF2;
+  --border-strong: #BAC3D0;
+
+  --primary: #0B4EA2;
+  --primary-hover: #123B75;
+  --primary-soft: #EEF4FC;
+  --accent: #F39A24;
+  --accent-soft: #FFF1DD;
+
+  --teal: #1E5AA8;
+  --teal-soft: #E6EFFB;
+  --green: #198754;
+  --green-soft: #EAF6EE;
+  --green-badge-bg: #EAF6EE;
+  --green-badge-text: #198754;
+
+  --amber: #F59E0B;
+  --amber-soft: #FEF3C7;
+  --badge-amber-bg: #FEF3C7;
+  --badge-amber-text: #92400E;
+
+  --red: #C62828;
+  --red-soft: #FDE8E8;
+  --badge-red-bg: #FDE8E8;
+  --badge-red-text: #C62828;
+
+  --input-bg: #FFFFFF;
+  --input-text: #1B1F24;
+  --card-shadow: 0 2px 8px rgba(18, 59, 117, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --gov-top-bar: linear-gradient(90deg, #F39A24 0%, #F39A24 33.33%, #FFFFFF 33.33%, #FFFFFF 66.66%, #138808 66.66%, #138808 100%);
+}
+
 :root[data-theme="dark"],
 html[data-theme="dark"],
 [data-theme="dark"],
@@ -57,62 +115,6 @@ html[data-theme="dark"],
   --gov-top-bar: #3a3a3a;
 }
 
-:root[data-theme="light"],
-html[data-theme="light"],
-[data-theme="light"],
-.light {
-  /* Government of India & iGOT Karmayogi Light Mode (2026 Standard) */
-  color-scheme: light;
-  --background: #F7F8FA;
-  --foreground: #1C2B3A;
-  --header: #173B67;
-  --header-text: #FFFFFF;
-  --header-nav-active: rgba(255, 255, 255, 0.18);
-  --header-nav-hover: rgba(255, 255, 255, 0.10);
-
-  --panel: #FFFFFF;
-  --panel-strong: #FFFFFF;
-  --panel-soft: #F0F4F8;
-  --panel-subtle: #EEF4FA;
-  --panel-inner: #F8FAFC;
-  --panel-warm: #FFF8EE;
-  --panel-warm-soft: #FDF5E8;
-
-  --muted: #64748B;
-  --muted-soft: #8A99A8;
-  --border: #E2E8F0;
-  --border-subtle: #EDF2F7;
-  --border-strong: #CBD5E1;
-
-  --primary: #2E5F9E;
-  --primary-hover: #244F87;
-  --primary-soft: #EEF4FA;
-  --accent: #E98A2E;
-  --accent-soft: #FFF1DE;
-
-  --teal: #0284C7;
-  --teal-soft: #E0F2FE;
-  --green: #2E7D4F;
-  --green-soft: #EAF5ED;
-  --green-badge-bg: #EAF5ED;
-  --green-badge-text: #2E7D4F;
-
-  --amber: #D58A20;
-  --amber-soft: #FEF3C7;
-  --badge-amber-bg: #FEF3C7;
-  --badge-amber-text: #92400E;
-
-  --red: #C43D3D;
-  --red-soft: #FEE2E2;
-  --badge-red-bg: #FEE2E2;
-  --badge-red-text: #991B1B;
-
-  --input-bg: #FFFFFF;
-  --input-text: #1C2B3A;
-  --card-shadow: 0 4px 20px rgba(20, 50, 80, 0.06), 0 1px 3px rgba(20, 50, 80, 0.04);
-  --gov-top-bar: linear-gradient(90deg, #FF9933 0%, #FF9933 33.33%, #FFFFFF 33.33%, #FFFFFF 66.66%, #138808 66.66%, #138808 100%);
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -122,7 +124,15 @@ html[data-theme="light"],
 
 html {
   scroll-behavior: smooth;
-  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* Enable smooth transitions only during active user toggle, avoiding initial load FOUC / flash */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 250ms ease, border-color 250ms ease, color 250ms ease, fill 250ms ease, stroke 250ms ease !important;
+  transition-delay: 0ms !important;
 }
 
 body {
@@ -141,8 +151,39 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Accessible Skip Link */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 1rem;
+  z-index: 10000;
+  background: var(--primary);
+  color: #ffffff !important;
+  padding: 0.625rem 1.25rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: top 150ms ease;
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* Accessibility Text Scaling */
+html[data-font-scale="sm"] {
+  font-size: 14px;
+}
+html[data-font-scale="base"] {
+  font-size: 16px;
+}
+html[data-font-scale="lg"] {
+  font-size: 18px;
 }
 
 ::-webkit-scrollbar {

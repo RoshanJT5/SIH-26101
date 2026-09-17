@@ -26,7 +26,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-theme="light"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased light`}
       suppressHydrationWarning
     >
       <head>
@@ -35,17 +36,20 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var saved = localStorage.getItem('sih_theme');
-                  var theme = (saved === 'light' || saved === 'dark') ? saved : 'dark';
-                  document.documentElement.setAttribute('data-theme', theme);
-                  document.documentElement.classList.add(theme);
+                  var saved = localStorage.getItem('theme') || localStorage.getItem('sih_theme');
+                  var theme = (saved === 'light' || saved === 'dark') ? saved : 'light';
+                  var root = document.documentElement;
+                  root.setAttribute('data-theme', theme);
+                  root.classList.remove('light', 'dark');
+                  root.classList.add(theme);
+                  root.style.colorScheme = theme;
                 } catch(e) {}
               })();
             `,
           }}
         />
       </head>
-      <body className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
+      <body className="min-h-full bg-[var(--background)] text-[var(--foreground)]" suppressHydrationWarning>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

@@ -462,12 +462,12 @@ export function AppShell({
       <footer className="border-t border-[var(--border)] bg-[var(--header)] py-4 text-center text-xs text-slate-400 mt-auto">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            <span className="font-semibold text-white">PragatiParikshan</span> • Ministry of Statistics and Programme Implementation (MoSPI)
+            <span className="font-semibold text-white">PragatiParikshan</span> • SIH 2026 Prototype Demonstration Platform
           </div>
           <div className="flex items-center gap-3 text-[11px] text-slate-300">
-            <span>SIH26101 Capacity Building</span>
+            <span>MoSPI Challenge SIH26101</span>
             <span>•</span>
-            <span>iGOT Karmayogi &amp; NSSTA Integrated</span>
+            <span>Aligned with iGOT Karmayogi Framework</span>
           </div>
         </div>
       </footer>
