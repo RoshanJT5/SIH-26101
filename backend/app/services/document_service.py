@@ -1,9 +1,12 @@
 import os
 import json
 try:
-    import fitz # PyMuPDF
+    import pymupdf as fitz
 except ImportError:
-    fitz = None
+    try:
+        import fitz
+    except ImportError:
+        fitz = None
 
 try:
     from docx import Document as DocxDocument
