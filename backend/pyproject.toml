@@ -1,17 +1,35 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "PragatiParikshan Backend - AI-Enabled Competency Intelligence Platform"
 readme = "README.md"
 authors = [
-    { name = "Aditya Jaiswal", email = "adibhai212005@gmail.com" }
+    { name = "Aditya Jaiswal", email = "adibhai212005@gmail.com" },
+    { name = "Roshan Talreja", email = "roshantalreja0501@gmail.com" }
 ]
-requires-python = ">=3.12"
-dependencies = []
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "sqlalchemy>=2.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "langchain>=0.1.0",
+    "langchain-community>=0.0.10",
+    "langchain-groq>=0.1.0",
+    "sentence-transformers>=2.2.2",
+    "numpy>=1.24.0",
+    "pymupdf>=1.22.0",
+    "rapidocr-onnxruntime==1.2.3",
+    "python-docx>=0.8.11",
+    "python-pptx>=0.6.21",
+    "pytest>=7.0.0",
+    "httpx>=0.24.0",
+    "python-multipart>=0.0.6",
+    "passlib>=1.7.4",
+    "bcrypt>=4.0.1,<4.1",
+    "psycopg2-binary>=2.9.9",
+]
 
-[project.scripts]
-backend = "backend:main"
-
-[build-system]
-requires = ["uv_build>=0.12.7,<0.13.0"]
-build-backend = "uv_build"
+[tool.uv]
+package = false
