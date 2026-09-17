@@ -161,7 +161,7 @@ app = FastAPI(
 )
 
 # Environment-driven CORS Setup
-allowed_origins_raw = settings.ALLOWED_ORIGINS
+allowed_origins_raw = "https://pragatiparikshan.vercel.app/"
 if allowed_origins_raw.strip() == "*":
     origins = ["*"]
 else:
