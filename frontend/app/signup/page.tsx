@@ -52,6 +52,149 @@ const LEVEL_NAMES = [
   "L5 Expert",
 ];
 
+const DEFAULT_MINISTRIES = [
+  "Ministry of Statistics and Programme Implementation (MoSPI)",
+  "Ministry of Finance",
+  "Ministry of Planning / NITI Aayog",
+  "Ministry of Electronics and Information Technology (MeitY)",
+  "Ministry of Commerce and Industry",
+  "Ministry of Education",
+  "Ministry of Health and Family Welfare",
+  "Ministry of Agriculture & Farmers Welfare",
+  "Ministry of Home Affairs",
+  "Ministry of Labour and Employment",
+];
+
+const DEFAULT_DEPARTMENTS = [
+  "National Statistical Office (NSO)",
+  "Department of Statistics",
+  "Department of Economic Affairs",
+  "Department of Expenditure",
+  "Central Statistics Office (CSO)",
+  "National Sample Survey Office (NSSO)",
+  "Computer Centre (MoSPI)",
+  "Coordination & Administration Division",
+];
+
+const DEFAULT_ORGANIZATIONS = [
+  { id: 1, name: "Survey Design and Research Division (SDRD)" },
+  { id: 2, name: "Data Processing Division (DPD)" },
+  { id: 3, name: "Field Operations Division (FOD)" },
+  { id: 4, name: "National Accounts Division (NAD)" },
+  { id: 5, name: "Economic Statistics Division (ESD)" },
+  { id: 6, name: "Social Statistics Division (SSD)" },
+  { id: 7, name: "Price Statistics Division (PSD)" },
+  { id: 8, name: "National Statistical Systems Training Academy (NSSTA)" },
+];
+
+const DEFAULT_ROLES = [
+  {
+    id: 1,
+    role_name: "Statistical Officer (Survey Design & Methodology)",
+    service_cadre: "Indian Statistical Service (ISS) / SSS",
+    competencies: [
+      { competency_id: 1, competency_name: "Survey Design", category: "DOMAIN", required_level: 4, importance: "CRITICAL" },
+      { competency_id: 2, competency_name: "Sampling Techniques", category: "DOMAIN", required_level: 4, importance: "CRITICAL" },
+      { competency_id: 3, competency_name: "Data Quality & Validation Frameworks", category: "TECHNICAL", required_level: 4, importance: "HIGH" },
+      { competency_id: 4, competency_name: "Python for Statistical Computing", category: "TECHNICAL", required_level: 3, importance: "HIGH" },
+      { competency_id: 5, competency_name: "Relational Databases & SQL", category: "TECHNICAL", required_level: 3, importance: "HIGH" },
+    ]
+  },
+  {
+    id: 2,
+    role_name: "Junior Statistical Officer (Microdata & PLFS Analytics)",
+    service_cadre: "Subordinate Statistical Service (SSS)",
+    competencies: [
+      { competency_id: 7, competency_name: "Labour & Employment Statistics", category: "DOMAIN", required_level: 4, importance: "CRITICAL" },
+      { competency_id: 2, competency_name: "Sampling Techniques", category: "DOMAIN", required_level: 3, importance: "HIGH" },
+      { competency_id: 4, competency_name: "Python for Statistical Computing", category: "TECHNICAL", required_level: 4, importance: "CRITICAL" },
+      { competency_id: 5, competency_name: "Relational Databases & SQL", category: "TECHNICAL", required_level: 4, importance: "HIGH" },
+    ]
+  },
+  {
+    id: 3,
+    role_name: "Senior Statistical Officer (SSO)",
+    service_cadre: "Subordinate Statistical Service (SSS)",
+    competencies: [
+      { competency_id: 3, competency_name: "Data Quality & Validation Frameworks", category: "TECHNICAL", required_level: 4, importance: "CRITICAL" },
+      { competency_id: 1, competency_name: "Survey Design", category: "DOMAIN", required_level: 3, importance: "HIGH" },
+      { competency_id: 10, competency_name: "Official Communication & Policy Briefs", category: "BEHAVIORAL", required_level: 4, importance: "HIGH" },
+    ]
+  },
+  {
+    id: 4,
+    role_name: "Assistant Director (Statistics)",
+    service_cadre: "Indian Statistical Service (ISS)",
+    competencies: [
+      { competency_id: 1, competency_name: "Survey Design", category: "DOMAIN", required_level: 4, importance: "CRITICAL" },
+      { competency_id: 12, competency_name: "Strategic Leadership in Public Admin", category: "BEHAVIORAL", required_level: 4, importance: "HIGH" },
+      { competency_id: 10, competency_name: "Official Communication & Policy Briefs", category: "BEHAVIORAL", required_level: 4, importance: "HIGH" },
+    ]
+  },
+  {
+    id: 5,
+    role_name: "Deputy Director (National Accounts & Macroeconomic Aggregates)",
+    service_cadre: "Indian Statistical Service (ISS)",
+    competencies: [
+      { competency_id: 8, competency_name: "National Accounts & GVA", category: "DOMAIN", required_level: 5, importance: "CRITICAL" },
+      { competency_id: 9, competency_name: "Price Statistics & Index Numbers", category: "DOMAIN", required_level: 4, importance: "CRITICAL" },
+      { competency_id: 10, competency_name: "Official Communication & Policy Briefs", category: "BEHAVIORAL", required_level: 4, importance: "HIGH" },
+    ]
+  },
+  {
+    id: 6,
+    role_name: "Director / Joint Director (Field Operations)",
+    service_cadre: "Indian Statistical Service (ISS)",
+    competencies: [
+      { competency_id: 3, competency_name: "Data Quality & Validation Frameworks", category: "TECHNICAL", required_level: 4, importance: "CRITICAL" },
+      { competency_id: 12, competency_name: "Strategic Leadership in Public Admin", category: "BEHAVIORAL", required_level: 4, importance: "CRITICAL" },
+    ]
+  },
+  {
+    id: 7,
+    role_name: "Data Processing Analyst / Programmer",
+    service_cadre: "IT Cadre",
+    competencies: [
+      { competency_id: 4, competency_name: "Python for Statistical Computing", category: "TECHNICAL", required_level: 5, importance: "CRITICAL" },
+      { competency_id: 5, competency_name: "Relational Databases & SQL", category: "TECHNICAL", required_level: 4, importance: "CRITICAL" },
+      { competency_id: 6, competency_name: "Interactive Data Visualization", category: "TECHNICAL", required_level: 4, importance: "HIGH" },
+    ]
+  },
+  {
+    id: 8,
+    role_name: "Statistical Investigator Grade-I",
+    service_cadre: "Subordinate Statistical Service (SSS)",
+    competencies: [
+      { competency_id: 1, competency_name: "Survey Design", category: "DOMAIN", required_level: 3, importance: "HIGH" },
+      { competency_id: 3, competency_name: "Data Quality & Validation Frameworks", category: "TECHNICAL", required_level: 3, importance: "HIGH" },
+    ]
+  },
+];
+
+const DEFAULT_COMPETENCIES: Competency[] = [
+  { id: 1, name: "Survey Design", category: "DOMAIN", description: "Multi-stage stratified sampling and survey methodology.", max_level: 5, active: true },
+  { id: 2, name: "Sampling Techniques", category: "DOMAIN", description: "Sample frame construction and variance estimation.", max_level: 5, active: true },
+  { id: 3, name: "Data Quality & Validation Frameworks", category: "TECHNICAL", description: "Logical consistency, edit-checks, and outlier treatment.", max_level: 5, active: true },
+  { id: 4, name: "Python for Statistical Computing", category: "TECHNICAL", description: "Pandas, NumPy, and statistical data pipelines.", max_level: 5, active: true },
+  { id: 5, name: "Relational Databases & SQL", category: "TECHNICAL", description: "Database normalization, indexing, and SQL queries.", max_level: 5, active: true },
+  { id: 6, name: "Interactive Data Visualization", category: "TECHNICAL", description: "Dashboard creation and statistical cartography.", max_level: 5, active: true },
+  { id: 7, name: "Labour & Employment Statistics", category: "DOMAIN", description: "PLFS metrics, activity status, and worker rates.", max_level: 5, active: true },
+  { id: 8, name: "National Accounts & GVA", category: "DOMAIN", description: "SNA 2008 macro aggregates and GDP compilation.", max_level: 5, active: true },
+  { id: 9, name: "Price Statistics & Index Numbers", category: "DOMAIN", description: "CPI, WPI, and Laspeyres/Paasche index methods.", max_level: 5, active: true },
+  { id: 10, name: "Official Communication & Policy Briefs", category: "BEHAVIORAL", description: "Evidence-based government documentation.", max_level: 5, active: true },
+  { id: 11, name: "Data Privacy & DPDP Act 2023", category: "REGULATORY", description: "Anonymization and data protection in public systems.", max_level: 5, active: true },
+  { id: 12, name: "Strategic Leadership in Public Admin", category: "BEHAVIORAL", description: "Cross-cadre governance and project coordination.", max_level: 5, active: true },
+];
+
+const DEFAULT_QUALIFICATIONS = [
+  "Post Graduate / Masters (Statistics/Maths/Economics)",
+  "Ph.D. / Doctorate",
+  "Bachelor of Statistics / B.Sc. Statistics",
+  "B.Tech / B.E. (Computer Science/Data/AI)",
+  "Post Graduate Diploma in Statistical Methods",
+  "Graduate / Other Degree",
+];
+
 export default function SignUpPage() {
   const router = useRouter();
 
@@ -60,7 +203,7 @@ export default function SignUpPage() {
 
   // Hierarchy & Competency Data
   const [hierarchy, setHierarchy] = useState<ProgressiveHierarchy | null>(null);
-  const [allCompetencies, setAllCompetencies] = useState<Competency[]>([]);
+  const [allCompetencies, setAllCompetencies] = useState<Competency[]>(DEFAULT_COMPETENCIES);
   const [loadingData, setLoadingData] = useState(true);
 
   // Step 1: Personal & Account
@@ -71,13 +214,15 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Step 1: Professional & Organization Cascading
-  const [selectedMinistry, setSelectedMinistry] = useState("");
-  const [selectedDepartment, setSelectedDepartment] = useState("");
-  const [selectedOrgId, setSelectedOrgId] = useState<number | "">("");
+  // Step 1: Professional & Organization Cascading (Text box enabled with smart suggestions)
+  const [selectedMinistry, setSelectedMinistry] = useState("Ministry of Statistics and Programme Implementation (MoSPI)");
+  const [selectedDepartment, setSelectedDepartment] = useState("National Statistical Office (NSO)");
+  const [selectedOrgName, setSelectedOrgName] = useState("Survey Design and Research Division (SDRD)");
+  const [selectedOrgId, setSelectedOrgId] = useState<number | "">(1);
+  const [selectedRoleName, setSelectedRoleName] = useState("Statistical Officer (Survey Design & Methodology)");
+  const [selectedRoleId, setSelectedRoleId] = useState<number | "">(1);
   const [divisionUnit, setDivisionUnit] = useState("");
-  const [designation, setDesignation] = useState("");
-  const [selectedRoleId, setSelectedRoleId] = useState<number | "">("");
+  const [designation, setDesignation] = useState("Statistical Officer");
   const [experienceYears, setExperienceYears] = useState<number>(3);
   const [education, setEducation] = useState("Post Graduate / Masters (Statistics/Maths/Economics)");
   const [specialization, setSpecialization] = useState("");
@@ -127,18 +272,20 @@ export default function SignUpPage() {
           setHierarchy(hierData);
           if (hierData.ministries && hierData.ministries.length > 0) {
             const defaultMin = hierData.ministries[0];
-            setSelectedMinistry(defaultMin);
+            setSelectedMinistry((prev) => prev || defaultMin);
 
             const depts = hierData.departments_by_ministry?.[defaultMin] || [];
             if (depts.length > 0) {
-              setSelectedDepartment(depts[0]);
+              setSelectedDepartment((prev) => prev || depts[0]);
               const orgs = hierData.organizations_by_dept?.[depts[0]] || [];
               if (orgs.length > 0) {
-                setSelectedOrgId(orgs[0].id);
+                setSelectedOrgName((prev) => prev || orgs[0].name);
+                setSelectedOrgId((prev) => prev || orgs[0].id);
                 const roles = hierData.roles_by_org?.[orgs[0].id] || [];
                 if (roles.length > 0) {
-                  setSelectedRoleId(roles[0].id);
-                  setDesignation(roles[0].role_name);
+                  setSelectedRoleName((prev) => prev || roles[0].role_name);
+                  setSelectedRoleId((prev) => prev || roles[0].id);
+                  setDesignation((prev) => prev || roles[0].role_name);
                 }
               }
             }
@@ -157,83 +304,123 @@ export default function SignUpPage() {
     loadInitData();
   }, []);
 
-  // Cascading options derived from hierarchy
-  const departmentOptions = useMemo(() => {
-    if (!hierarchy || !selectedMinistry) return [];
-    return hierarchy.departments_by_ministry?.[selectedMinistry] || [];
+  // Suggestions for autocomplete datalists
+  const allMinistryOptions = useMemo(() => {
+    const list = [...(hierarchy?.ministries || []), ...DEFAULT_MINISTRIES];
+    return Array.from(new Set(list.filter(Boolean)));
+  }, [hierarchy]);
+
+  const allDepartmentOptions = useMemo(() => {
+    const fromHier = selectedMinistry ? hierarchy?.departments_by_ministry?.[selectedMinistry] || [] : [];
+    const list = [...fromHier, ...DEFAULT_DEPARTMENTS];
+    return Array.from(new Set(list.filter(Boolean)));
   }, [hierarchy, selectedMinistry]);
 
-  const organizationOptions = useMemo(() => {
-    if (!hierarchy || !selectedDepartment) return [];
-    return hierarchy.organizations_by_dept?.[selectedDepartment] || [];
+  const allOrganizationOptions = useMemo(() => {
+    const fromHier = selectedDepartment ? hierarchy?.organizations_by_dept?.[selectedDepartment] || [] : [];
+    const combined = [...fromHier, ...DEFAULT_ORGANIZATIONS];
+    const map = new Map<string, { id: number; name: string }>();
+    combined.forEach((o) => {
+      if (o.name && !map.has(o.name)) {
+        map.set(o.name, { id: o.id, name: o.name });
+      }
+    });
+    return Array.from(map.values());
   }, [hierarchy, selectedDepartment]);
 
-  const roleOptions = useMemo(() => {
-    if (!hierarchy || !selectedOrgId) return [];
-    return hierarchy.roles_by_org?.[Number(selectedOrgId)] || [];
+  const allRoleOptions = useMemo(() => {
+    const fromHier = selectedOrgId ? hierarchy?.roles_by_org?.[Number(selectedOrgId)] || [] : [];
+    const combined = [...fromHier, ...DEFAULT_ROLES];
+    const map = new Map<string, any>();
+    combined.forEach((r) => {
+      if (r.role_name && !map.has(r.role_name)) {
+        map.set(r.role_name, r);
+      }
+    });
+    return Array.from(map.values());
   }, [hierarchy, selectedOrgId]);
 
   // Active selected role details & expected competencies
   const selectedRoleDetails = useMemo(() => {
-    if (!roleOptions.length || !selectedRoleId) return null;
-    return roleOptions.find((r) => r.id === Number(selectedRoleId)) || null;
-  }, [roleOptions, selectedRoleId]);
+    if (selectedRoleId) {
+      const byId = allRoleOptions.find((r) => r.id === Number(selectedRoleId));
+      if (byId) return byId;
+    }
+    if (selectedRoleName) {
+      const byName = allRoleOptions.find((r) => r.role_name.toLowerCase() === selectedRoleName.toLowerCase());
+      if (byName) return byName;
+    }
+    return allRoleOptions[0] || DEFAULT_ROLES[0];
+  }, [allRoleOptions, selectedRoleId, selectedRoleName]);
 
   const roleExpectedCompetencies: RoleCompetencyRequirement[] = useMemo(() => {
-    return selectedRoleDetails?.competencies || [];
+    return selectedRoleDetails?.competencies || DEFAULT_ROLES[0].competencies || [];
   }, [selectedRoleDetails]);
 
-  // Handle cascading dropdown changes
-  function handleMinistryChange(min: string) {
-    setSelectedMinistry(min);
-    const depts = hierarchy?.departments_by_ministry?.[min] || [];
-    const firstDept = depts.length > 0 ? depts[0] : "";
-    setSelectedDepartment(firstDept);
-
-    const orgs = firstDept ? hierarchy?.organizations_by_dept?.[firstDept] || [] : [];
-    const firstOrgId = orgs.length > 0 ? orgs[0].id : "";
-    setSelectedOrgId(firstOrgId);
-
-    const roles = firstOrgId ? hierarchy?.roles_by_org?.[Number(firstOrgId)] || [] : [];
-    const firstRoleId = roles.length > 0 ? roles[0].id : "";
-    setSelectedRoleId(firstRoleId);
-    if (firstRoleId && roles.length > 0) {
-      setDesignation(roles[0].role_name);
+  // Handle cascading text inputs
+  function handleMinistryInput(val: string) {
+    setSelectedMinistry(val);
+    const depts = hierarchy?.departments_by_ministry?.[val];
+    if (depts && depts.length > 0) {
+      setSelectedDepartment(depts[0]);
+      const orgs = hierarchy?.organizations_by_dept?.[depts[0]];
+      if (orgs && orgs.length > 0) {
+        setSelectedOrgName(orgs[0].name);
+        setSelectedOrgId(orgs[0].id);
+        const roles = hierarchy?.roles_by_org?.[orgs[0].id];
+        if (roles && roles.length > 0) {
+          setSelectedRoleName(roles[0].role_name);
+          setSelectedRoleId(roles[0].id);
+          setDesignation(roles[0].role_name);
+        }
+      }
     }
   }
 
-  function handleDepartmentChange(dept: string) {
-    setSelectedDepartment(dept);
-    const orgs = hierarchy?.organizations_by_dept?.[dept] || [];
-    const firstOrgId = orgs.length > 0 ? orgs[0].id : "";
-    setSelectedOrgId(firstOrgId);
-
-    const roles = firstOrgId ? hierarchy?.roles_by_org?.[Number(firstOrgId)] || [] : [];
-    const firstRoleId = roles.length > 0 ? roles[0].id : "";
-    setSelectedRoleId(firstRoleId);
-    if (firstRoleId && roles.length > 0) {
-      setDesignation(roles[0].role_name);
+  function handleDepartmentInput(val: string) {
+    setSelectedDepartment(val);
+    const orgs = hierarchy?.organizations_by_dept?.[val];
+    if (orgs && orgs.length > 0) {
+      setSelectedOrgName(orgs[0].name);
+      setSelectedOrgId(orgs[0].id);
+      const roles = hierarchy?.roles_by_org?.[orgs[0].id];
+      if (roles && roles.length > 0) {
+        setSelectedRoleName(roles[0].role_name);
+        setSelectedRoleId(roles[0].id);
+        setDesignation(roles[0].role_name);
+      }
     }
   }
 
-  function handleOrgChange(orgIdVal: string) {
-    const orgIdNum = orgIdVal ? Number(orgIdVal) : "";
-    setSelectedOrgId(orgIdNum);
-
-    const roles = orgIdNum ? hierarchy?.roles_by_org?.[orgIdNum] || [] : [];
-    const firstRoleId = roles.length > 0 ? roles[0].id : "";
-    setSelectedRoleId(firstRoleId);
-    if (firstRoleId && roles.length > 0) {
-      setDesignation(roles[0].role_name);
-    }
-  }
-
-  function handleRoleChange(roleIdVal: string) {
-    const roleIdNum = roleIdVal ? Number(roleIdVal) : "";
-    setSelectedRoleId(roleIdNum);
-    const matched = roleOptions.find((r) => r.id === roleIdNum);
+  function handleOrgInput(val: string) {
+    setSelectedOrgName(val);
+    const matched = allOrganizationOptions.find(
+      (o) => o.name.toLowerCase() === val.toLowerCase() || val.toLowerCase().includes(o.name.toLowerCase())
+    );
     if (matched) {
+      setSelectedOrgId(matched.id);
+      const roles = hierarchy?.roles_by_org?.[matched.id];
+      if (roles && roles.length > 0) {
+        setSelectedRoleName(roles[0].role_name);
+        setSelectedRoleId(roles[0].id);
+        setDesignation(roles[0].role_name);
+      }
+    } else {
+      if (!selectedOrgId) setSelectedOrgId(1);
+    }
+  }
+
+  function handleRoleInput(val: string) {
+    setSelectedRoleName(val);
+    const matched = allRoleOptions.find(
+      (r) => r.role_name.toLowerCase() === val.toLowerCase() || val.toLowerCase().includes(r.role_name.toLowerCase())
+    );
+    if (matched) {
+      setSelectedRoleId(matched.id);
       setDesignation(matched.role_name);
+    } else {
+      setDesignation(val);
+      if (!selectedRoleId) setSelectedRoleId(1);
     }
   }
 
@@ -481,12 +668,12 @@ export default function SignUpPage() {
   const progressPercent = useMemo(() => {
     let score = 0;
     if (fullName && email && password && confirmPassword) score += 20;
-    if (selectedMinistry && selectedDepartment && selectedOrgId && selectedRoleId) score += 20;
+    if (selectedMinistry && selectedDepartment && selectedOrgName && selectedRoleName) score += 20;
     if (Object.keys(selectedSkills).length > 0) score += 30;
     if (currentStep >= 2) score += 15;
     if (currentStep === 3) score += 15;
     return Math.min(100, score);
-  }, [fullName, email, password, confirmPassword, selectedMinistry, selectedDepartment, selectedOrgId, selectedRoleId, selectedSkills, currentStep]);
+  }, [fullName, email, password, confirmPassword, selectedMinistry, selectedDepartment, selectedOrgName, selectedRoleName, selectedSkills, currentStep]);
 
   // Validation logic
   function validateStep1(): boolean {
@@ -520,17 +707,17 @@ export default function SignUpPage() {
       hasError = true;
     }
 
-    if (!selectedMinistry) {
-      setGeneralError("Please select your Ministry.");
+    if (!selectedMinistry.trim()) {
+      setGeneralError("Please enter your Ministry.");
       hasError = true;
-    } else if (!selectedDepartment) {
-      setGeneralError("Please select your Department.");
+    } else if (!selectedDepartment.trim()) {
+      setGeneralError("Please enter your Department.");
       hasError = true;
-    } else if (!selectedOrgId) {
-      setGeneralError("Please select your Organization.");
+    } else if (!selectedOrgName.trim()) {
+      setGeneralError("Please enter your Organization / Directorate.");
       hasError = true;
-    } else if (!selectedRoleId) {
-      setGeneralError("Please select your Role / Job Function.");
+    } else if (!selectedRoleName.trim()) {
+      setGeneralError("Please enter your Role / Job Function.");
       hasError = true;
     }
 
@@ -561,20 +748,24 @@ export default function SignUpPage() {
         not_sure_assess: s.notSureAssess,
       }));
 
+      const resolvedOrgId = Number(selectedOrgId) || 1;
+      const resolvedRoleId = Number(selectedRoleId) || 1;
+
       const payload: UserOnboardingPayload = {
         name: fullName.trim(),
         email: email.trim().toLowerCase(),
         mobile: mobile.trim() || undefined,
         employee_id: employeeId.trim() || undefined,
         password: password,
-        ministry: selectedMinistry,
-        department: selectedDepartment,
-        organization_id: Number(selectedOrgId),
-        role_id: Number(selectedRoleId),
+        ministry: selectedMinistry.trim(),
+        department: selectedDepartment.trim(),
+        organization_id: resolvedOrgId,
+        role_id: resolvedRoleId,
         division_unit: divisionUnit.trim() || undefined,
-        designation: designation.trim() || undefined,
+        designation: designation.trim() || selectedRoleName.trim() || undefined,
+        job_role: selectedRoleName.trim() || undefined,
         experience_years: Number(experienceYears) || 0,
-        education: education,
+        education: education.trim() || undefined,
         specialization: specialization.trim() || undefined,
         career_goal: "Official Statistical Competency Enhancement",
         selected_skills: skillsPayload,
@@ -603,8 +794,8 @@ export default function SignUpPage() {
       setCreatedProfile({
         id: userProfile.id,
         name: userProfile.name,
-        roleName: userProfile.role_name || selectedRoleDetails?.role_name || "Official",
-        orgName: userProfile.organization_name || selectedMinistry,
+        roleName: userProfile.role_name || selectedRoleName || "Official",
+        orgName: userProfile.organization_name || selectedOrgName || selectedMinistry,
         expectedCount: summaryStats.expected,
         declaredCount: summaryStats.declared,
         assessmentRequiredCount: summaryStats.assessmentRequired,
@@ -1137,50 +1328,68 @@ export default function SignUpPage() {
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
                     {/* Ministry */}
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-semibold text-[var(--foreground)]">Ministry *</span>
-                      <select
+                      <span className="mb-1.5 block text-xs font-semibold text-[var(--foreground)] flex items-center justify-between">
+                        <span>Ministry *</span>
+                        <span className="text-[10px] text-[var(--muted)] font-normal">Type manually or select</span>
+                      </span>
+                      <input
+                        type="text"
+                        required
+                        list="ministry-suggestions"
                         value={selectedMinistry}
-                        onChange={(e) => handleMinistryChange(e.target.value)}
-                        className={selectClass}
-                      >
-                        {hierarchy?.ministries?.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
+                        onChange={(e) => handleMinistryInput(e.target.value)}
+                        placeholder="e.g. Ministry of Statistics and Programme Implementation (MoSPI)"
+                        className={fieldClass}
+                      />
+                      <datalist id="ministry-suggestions">
+                        {allMinistryOptions.map((m) => (
+                          <option key={m} value={m} />
                         ))}
-                      </select>
+                      </datalist>
                     </label>
 
                     {/* Department */}
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-semibold text-[var(--foreground)]">Department *</span>
-                      <select
+                      <span className="mb-1.5 block text-xs font-semibold text-[var(--foreground)] flex items-center justify-between">
+                        <span>Department *</span>
+                        <span className="text-[10px] text-[var(--muted)] font-normal">Type manually or select</span>
+                      </span>
+                      <input
+                        type="text"
+                        required
+                        list="department-suggestions"
                         value={selectedDepartment}
-                        onChange={(e) => handleDepartmentChange(e.target.value)}
-                        className={selectClass}
-                      >
-                        {departmentOptions.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
+                        onChange={(e) => handleDepartmentInput(e.target.value)}
+                        placeholder="e.g. National Statistical Office (NSO)"
+                        className={fieldClass}
+                      />
+                      <datalist id="department-suggestions">
+                        {allDepartmentOptions.map((d) => (
+                          <option key={d} value={d} />
                         ))}
-                      </select>
+                      </datalist>
                     </label>
 
                     {/* Organization */}
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-semibold text-[var(--foreground)]">Organization / Directorate *</span>
-                      <select
-                        value={selectedOrgId}
-                        onChange={(e) => handleOrgChange(e.target.value)}
-                        className={selectClass}
-                      >
-                        {organizationOptions.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.name}
-                          </option>
+                      <span className="mb-1.5 block text-xs font-semibold text-[var(--foreground)] flex items-center justify-between">
+                        <span>Organization / Directorate *</span>
+                        <span className="text-[10px] text-[var(--muted)] font-normal">Type manually or select</span>
+                      </span>
+                      <input
+                        type="text"
+                        required
+                        list="organization-suggestions"
+                        value={selectedOrgName}
+                        onChange={(e) => handleOrgInput(e.target.value)}
+                        placeholder="e.g. Survey Design and Research Division (SDRD)"
+                        className={fieldClass}
+                      />
+                      <datalist id="organization-suggestions">
+                        {allOrganizationOptions.map((o) => (
+                          <option key={o.name} value={o.name} />
                         ))}
-                      </select>
+                      </datalist>
                     </label>
 
                     {/* Division / Unit */}
@@ -1201,17 +1410,22 @@ export default function SignUpPage() {
                         <span>Role / Job Function * (Pulls Official Cadre Competencies)</span>
                         <span className="text-[11px] text-[var(--primary)] font-bold">Auto-links Mandated Baseline</span>
                       </span>
-                      <select
-                        value={selectedRoleId}
-                        onChange={(e) => handleRoleChange(e.target.value)}
-                        className={`${selectClass} font-semibold text-[var(--foreground)] bg-[var(--panel)]`}
-                      >
-                        {roleOptions.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.role_name} {r.service_cadre ? `(${r.service_cadre})` : ""}
+                      <input
+                        type="text"
+                        required
+                        list="role-suggestions"
+                        value={selectedRoleName}
+                        onChange={(e) => handleRoleInput(e.target.value)}
+                        placeholder="e.g. Statistical Officer (Survey Design &amp; Methodology)"
+                        className={`${fieldClass} font-semibold text-[var(--foreground)]`}
+                      />
+                      <datalist id="role-suggestions">
+                        {allRoleOptions.map((r) => (
+                          <option key={r.id || r.role_name} value={r.role_name}>
+                            {r.service_cadre ? `${r.role_name} (${r.service_cadre})` : r.role_name}
                           </option>
                         ))}
-                      </select>
+                      </datalist>
                     </label>
 
                     {/* Designation */}
@@ -1243,20 +1457,24 @@ export default function SignUpPage() {
 
                     {/* Highest Qualification */}
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-semibold text-[var(--foreground)]">Highest Qualification *</span>
-                      <select
+                      <span className="mb-1.5 block text-xs font-semibold text-[var(--foreground)] flex items-center justify-between">
+                        <span>Highest Qualification *</span>
+                        <span className="text-[10px] text-[var(--muted)] font-normal">Type or select</span>
+                      </span>
+                      <input
+                        type="text"
+                        required
+                        list="education-suggestions"
                         value={education}
                         onChange={(e) => setEducation(e.target.value)}
-                        className={selectClass}
-                      >
-                        <option value="Post Graduate / Masters (Statistics/Maths/Economics)">
-                          Post Graduate / Masters (Statistics/Maths/Economics)
-                        </option>
-                        <option value="Ph.D. / Doctorate">Ph.D. / Doctorate</option>
-                        <option value="Bachelor of Statistics / B.Sc.">Bachelor of Statistics / B.Sc.</option>
-                        <option value="B.Tech / B.E. (Computer Science/Data)">B.Tech / B.E. (Computer Science/Data)</option>
-                        <option value="Graduate / Other Degree">Graduate / Other Degree</option>
-                      </select>
+                        placeholder="e.g. Post Graduate / Masters (Statistics/Maths/Economics)"
+                        className={fieldClass}
+                      />
+                      <datalist id="education-suggestions">
+                        {DEFAULT_QUALIFICATIONS.map((q) => (
+                          <option key={q} value={q} />
+                        ))}
+                      </datalist>
                     </label>
 
                     {/* Specialization */}

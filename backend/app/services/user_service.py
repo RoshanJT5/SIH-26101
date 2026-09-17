@@ -89,7 +89,18 @@ class UserService:
         if not role:
             role = db.query(Role).first()
 
-        org_id = onboarding_in.organization_id or (role.organization_id if role else None)
+        org_id = None
+        if onboarding_in.organization_id:
+            existing_org = db.query(Organization).filter(Organization.id == onboarding_in.organization_id).first()
+            if existing_org:
+                org_id = existing_org.id
+
+        if not org_id and role:
+            org_id = role.organization_id
+        if not org_id:
+            first_org = db.query(Organization).first()
+            org_id = first_org.id if first_org else None
+
         role_id = role.id if role else None
 
         password_value = onboarding_in.password if onboarding_in.password else "gov12345"
